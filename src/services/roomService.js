@@ -99,6 +99,12 @@ function createRoomService({ io, rooms, socketRefs, env }) {
     }
   }
 
+  function resetMatchState(room) {
+    room.matchScore = [0, 0]
+    room.nextRoundStake = 1
+    room.matchWinnerTeam = null
+  }
+
   function countHumanPlayers(room) {
     return [...room.players.values()].filter((player) => player.kind !== 'bot').length
   }
@@ -415,6 +421,7 @@ function createRoomService({ io, rooms, socketRefs, env }) {
     scheduleBotTurn,
     clearBotTurnTimer,
     clearTrickResolutionTimer,
+    resetMatchState,
     cleanupRooms,
   }
 }

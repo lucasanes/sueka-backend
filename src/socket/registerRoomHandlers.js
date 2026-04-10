@@ -137,9 +137,7 @@ function registerRoomHandlers(io, roomService) {
       roomService.clearBotTurnTimer(room)
       roomService.clearTrickResolutionTimer(room)
       if (room.matchWinnerTeam !== null) {
-        room.matchScore = [0, 0]
-        room.nextRoundStake = 1
-        room.matchWinnerTeam = null
+        roomService.resetMatchState(room)
         roomService.emitEvent(room, 'Novo placar de Sueka iniciado.')
       }
 
@@ -194,13 +192,34 @@ function registerRoomHandlers(io, roomService) {
       roomService.clearBotTurnTimer(room)
       roomService.clearTrickResolutionTimer(room)
       if (room.matchWinnerTeam !== null) {
-        room.matchScore = [0, 0]
-        room.nextRoundStake = 1
-        room.matchWinnerTeam = null
-        roomService.emitEvent(room, 'Novo placar de Sueka iniciado.')
+        roomService.resetMatchState(room)
+        roomService.emitEvent(room, 'A rodada foi reiniciada e um novo placar de Sueka foi aberto.')
+      } else {
+        roomService.emitEvent(room, 'A rodada foi reiniciada. O placar da Sueka foi mantido.')
       }
       room.updatedAt = Date.now()
-      roomService.emitEvent(room, 'A sala voltou para o lobby.')
+      roomService.broadcastRoom(room)
+    })
+
+    socket.on('game:restart-match', () => {
+      const current = roomService.requireCurrent(socket)
+      if (!current) {
+        return
+      }
+
+      const { room, player } = current
+      if (player.id !== room.ownerId) {
+        roomService.emitError(socket, 'OWNER_ONLY', 'Só o dono da sala pode reiniciar a partida.')
+        return
+      }
+
+      room.game = null
+      room.status = 'lobby'
+      roomService.clearBotTurnTimer(room)
+      roomService.clearTrickResolutionTimer(room)
+      roomService.resetMatchState(room)
+      room.updatedAt = Date.now()
+      roomService.emitEvent(room, 'A partida foi reiniciada e o placar da Sueka voltou a zero.')
       roomService.broadcastRoom(room)
     })
 
