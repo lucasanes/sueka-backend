@@ -2,6 +2,28 @@ const { createGame } = require('../game/game')
 const { RECONNECT_WINDOW_MS } = require('../config/env')
 const { socketRefs } = require('../store/roomStore')
 
+function handPoints(cards = []) {
+  return cards.reduce((sum, card) => sum + (card.points ?? 0), 0)
+}
+
+function canPlayerArryCurrentRound(room, player) {
+  if (room.status !== 'playing' || !room.game) {
+    return false
+  }
+
+  const playerSeat = room.seats.indexOf(player.id)
+  if (playerSeat === -1 || room.game.currentTurnSeat !== playerSeat) {
+    return false
+  }
+
+  const isRoundOpening = room.game.trickNumber === 1 && room.game.currentTrick.length === 0
+  if (!isRoundOpening) {
+    return false
+  }
+
+  return handPoints(room.game.hands[player.id]) < 10
+}
+
 function registerRoomHandlers(io, roomService) {
   io.on('connection', (socket) => {
     socket.on('room:create', ({ playerName } = {}) => {
@@ -15,6 +37,10 @@ function registerRoomHandlers(io, roomService) {
       if (!room) {
         roomService.emitError(socket, 'ROOM_NOT_FOUND', 'Sala não encontrada.')
         return
+      }
+
+      if (room.status === 'lobby') {
+        roomService.pruneExpiredPlayers(room)
       }
 
       const reconnectingPlayer = roomService.findPlayerBySession(room, sessionToken)
@@ -50,6 +76,7 @@ function registerRoomHandlers(io, roomService) {
         roomService.emitError(socket, 'GAME_LOCKED', 'Os assentos ficam travados durante a partida.')
         return
       }
+      roomService.pruneExpiredPlayers(room)
       if (!Number.isInteger(index) || index < 0 || index > 3) {
         roomService.emitError(socket, 'INVALID_SEAT', 'Escolha um assento válido.')
         return
@@ -96,6 +123,7 @@ function registerRoomHandlers(io, roomService) {
         roomService.emitError(socket, 'GAME_LOCKED', 'Os bots só podem ser adicionados no lobby.')
         return
       }
+      roomService.pruneExpiredPlayers(room)
       if (!Number.isInteger(index) || index < 0 || index > 3) {
         roomService.emitError(socket, 'INVALID_SEAT', 'Escolha um assento válido.')
         return
@@ -145,8 +173,9 @@ function registerRoomHandlers(io, roomService) {
         roomService.emitEvent(room, 'Novo placar de Sueka iniciado.')
       }
 
-      room.game = createGame(room.seats)
+      room.game = createGame(room.seats, room.nextStartingSeat)
       room.status = 'playing'
+      room.nextStartingSeat = (room.nextStartingSeat + 1) % room.seats.length
       room.updatedAt = Date.now()
       roomService.emitEvent(room, wasFinished ? 'A próxima rodada começou.' : 'A partida começou.')
       roomService.broadcastRoom(room)
@@ -186,9 +215,16 @@ function registerRoomHandlers(io, roomService) {
       }
 
       const { room, player } = current
-      if (player.id !== room.ownerId) {
+      const ownerRestart = player.id === room.ownerId
+      const arryRestart = canPlayerArryCurrentRound(room, player)
+
+      if (!ownerRestart && !arryRestart) {
         roomService.emitError(socket, 'OWNER_ONLY', 'Só o dono da sala pode reiniciar.')
         return
+      }
+
+      if (room.game?.startingSeat !== undefined) {
+        room.nextStartingSeat = room.game.startingSeat
       }
 
       room.game = null
@@ -198,6 +234,8 @@ function registerRoomHandlers(io, roomService) {
       if (room.matchWinnerTeam !== null) {
         roomService.resetMatchState(room)
         roomService.emitEvent(room, 'A rodada foi reiniciada e um novo placar de Sueka foi aberto.')
+      } else if (arryRestart) {
+        roomService.emitEvent(room, `${player.name} arriou a rodada.`)
       } else {
         roomService.emitEvent(room, 'A rodada foi reiniciada. O placar da Sueka foi mantido.')
       }

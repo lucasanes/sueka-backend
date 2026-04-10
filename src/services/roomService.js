@@ -71,6 +71,7 @@ function createRoomService({ io, rooms, socketRefs, env }) {
       seats: [null, null, null, null],
       status: 'lobby',
       game: null,
+      nextStartingSeat: 0,
       matchScore: [0, 0],
       nextRoundStake: 1,
       matchWinnerTeam: null,
@@ -101,6 +102,7 @@ function createRoomService({ io, rooms, socketRefs, env }) {
   }
 
   function resetMatchState(room) {
+    room.nextStartingSeat = 0
     room.matchScore = [0, 0]
     room.nextRoundStake = 1
     room.matchWinnerTeam = null
@@ -387,30 +389,44 @@ function createRoomService({ io, rooms, socketRefs, env }) {
     broadcastRoom(room)
   }
 
+  function pruneExpiredPlayers(room, now = Date.now()) {
+    let changed = false
+
+    for (const player of room.players.values()) {
+      if (player.kind === 'bot' || player.connected || !player.disconnectExpiresAt || player.disconnectExpiresAt >= now) {
+        continue
+      }
+
+      const seatIndex = room.seats.indexOf(player.id)
+      if (seatIndex !== -1) {
+        room.seats[seatIndex] = null
+      }
+
+      const wasOwner = room.ownerId === player.id
+      const wasOriginalOwner = room.originalOwnerId === player.id
+      room.players.delete(player.id)
+
+      if (wasOwner) {
+        reassignOwnerIfNeeded(room)
+      }
+      if (wasOriginalOwner) {
+        room.originalOwnerId = null
+      }
+
+      changed = true
+    }
+
+    if (changed) {
+      room.updatedAt = now
+    }
+
+    return changed
+  }
+
   function cleanupRooms(now) {
     for (const [code, room] of rooms.entries()) {
-      for (const player of room.players.values()) {
-        if (
-          player.kind !== 'bot' &&
-          !player.connected &&
-          player.disconnectExpiresAt &&
-          player.disconnectExpiresAt < now &&
-          room.status === 'lobby'
-        ) {
-          const seatIndex = room.seats.indexOf(player.id)
-          if (seatIndex !== -1) {
-            room.seats[seatIndex] = null
-          }
-          const wasOwner = room.ownerId === player.id
-          const wasOriginalOwner = room.originalOwnerId === player.id
-          room.players.delete(player.id)
-          if (wasOwner) {
-            reassignOwnerIfNeeded(room)
-          }
-          if (wasOriginalOwner) {
-            room.originalOwnerId = null
-          }
-        }
+      if (room.status === 'lobby') {
+        pruneExpiredPlayers(room, now)
       }
 
       const hasConnectedPlayers = [...room.players.values()].some((player) => player.kind !== 'bot' && player.connected)
@@ -443,6 +459,7 @@ function createRoomService({ io, rooms, socketRefs, env }) {
     clearBotTurnTimer,
     clearTrickResolutionTimer,
     resetMatchState,
+    pruneExpiredPlayers,
     cleanupRooms,
   }
 }

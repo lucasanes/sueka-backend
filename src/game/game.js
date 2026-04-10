@@ -23,18 +23,53 @@ function shuffleDeck(deck) {
   return shuffled
 }
 
-function createGame(seats, deck = shuffleDeck(createDeck())) {
+function previousSeatIndex(startingSeat, seatsLength) {
+  return (startingSeat + seatsLength - 1) % seatsLength
+}
+
+function ensurePreviousSeatHasTrump(deck, startingSeat, seatsLength = 4) {
+  const preparedDeck = [...deck]
+  const trumpSuit = preparedDeck[preparedDeck.length - 1]?.suit
+
+  if (!trumpSuit) {
+    return preparedDeck
+  }
+
+  const requiredSeat = previousSeatIndex(startingSeat, seatsLength)
+  const requiredSeatCards = preparedDeck.filter((_, index) => index % seatsLength === requiredSeat)
+  const alreadyHasTrump = requiredSeatCards.some((card) => card.suit === trumpSuit)
+  if (alreadyHasTrump) {
+    return preparedDeck
+  }
+
+  const trumpCardIndex = preparedDeck.findIndex(
+    (card, index) => card.suit === trumpSuit && index % seatsLength !== requiredSeat && index !== preparedDeck.length - 1,
+  )
+  const swapTargetIndex = preparedDeck.findIndex((card, index) => card.suit !== trumpSuit && index % seatsLength === requiredSeat)
+
+  if (trumpCardIndex === -1 || swapTargetIndex === -1) {
+    return preparedDeck
+  }
+
+  ;[preparedDeck[trumpCardIndex], preparedDeck[swapTargetIndex]] = [preparedDeck[swapTargetIndex], preparedDeck[trumpCardIndex]]
+
+  return preparedDeck
+}
+
+function createGame(seats, startingSeat = 0, deck = shuffleDeck(createDeck())) {
+  const preparedDeck = ensurePreviousSeatHasTrump(deck, startingSeat, seats.length)
   const hands = Object.fromEntries(seats.map((playerId) => [playerId, []]))
 
-  deck.forEach((card, index) => {
+  preparedDeck.forEach((card, index) => {
     hands[seats[index % seats.length]].push(card)
   })
 
   return {
-    deck,
+    deck: preparedDeck,
     hands,
-    trump: deck[deck.length - 1].suit,
-    currentTurnSeat: 0,
+    trump: preparedDeck[preparedDeck.length - 1].suit,
+    startingSeat,
+    currentTurnSeat: startingSeat,
     currentTrick: [],
     trickNumber: 1,
     scores: [0, 0],
@@ -350,6 +385,15 @@ function preferAggressiveWinner(winningCards, leadSuit, trumpSuit, currentTrick)
   return winningCards[0]
 }
 
+function isPartnerWinnerSafe(currentWinningPlay, leadSuit, trumpSuit, lastToAct) {
+  return (
+    lastToAct ||
+    currentWinningPlay.card.suit === trumpSuit ||
+    currentWinningPlay.card.rank === 'A' ||
+    currentWinningPlay.card.rank === '7'
+  )
+}
+
 function pickBotCard(hand, currentTrick, trumpSuit, seatIndex = -1, completedTricks = []) {
   const playableCards = hand.filter((card) => canPlayCard(hand, currentTrick, card))
   if (playableCards.length === 0) {
@@ -368,6 +412,9 @@ function pickBotCard(hand, currentTrick, trumpSuit, seatIndex = -1, completedTri
   const lastToAct = currentTrick.length === 3
   const followSuitCards = playableCards.filter((card) => card.suit === leadSuit)
   const trumpCards = playableCards.filter((card) => card.suit === trumpSuit)
+  const partnerLooksSafe = partnerWinning
+    ? isPartnerWinnerSafe(currentWinningPlay, leadSuit, trumpSuit, lastToAct)
+    : false
 
   if (!partnerWinning) {
     const winningCards = playableCards
@@ -382,8 +429,6 @@ function pickBotCard(hand, currentTrick, trumpSuit, seatIndex = -1, completedTri
   if (followSuitCards.length > 0) {
     if (partnerWinning) {
       const pointCards = followSuitCards.filter((card) => card.points > 0)
-      const partnerLooksSafe =
-        lastToAct || currentWinningPlay.card.suit === trumpSuit || currentWinningPlay.card.rank === 'A' || currentWinningPlay.card.rank === '7'
       const trickIsTrumpLed = leadSuit === trumpSuit
 
       // Preserve high trumps when our partner is already winning a trump trick.
@@ -397,6 +442,12 @@ function pickBotCard(hand, currentTrick, trumpSuit, seatIndex = -1, completedTri
 
   if (partnerWinning) {
     const nonTrumpCards = playableCards.filter((card) => card.suit !== trumpSuit)
+    const nonTrumpPointCards = nonTrumpCards.filter((card) => card.points > 0)
+
+    if (partnerLooksSafe && nonTrumpPointCards.length > 0) {
+      return pickHighestPoints(nonTrumpPointCards)
+    }
+
     if (nonTrumpCards.length > 0) {
       return pickSafestLoser(nonTrumpCards)
     }

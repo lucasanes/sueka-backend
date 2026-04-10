@@ -33,6 +33,30 @@ test('player must follow the lead suit when possible', () => {
   assert.doesNotThrow(() => playCard(game, seats, 'p2', '2-hearts'))
 })
 
+test('new game can start from a rotating seat', () => {
+  const seats = ['p1', 'p2', 'p3', 'p4']
+  const game = createGame(seats, 2)
+
+  assert.equal(game.currentTurnSeat, 2)
+})
+
+test('player before the starter is guaranteed at least one trump', () => {
+  const seats = ['p1', 'p2', 'p3', 'p4']
+  const deck = []
+
+  for (let index = 0; index < 40; index += 1) {
+    const seatIndex = index % 4
+    const suit = seatIndex === 1 || index === 39 ? 'hearts' : 'clubs'
+    deck.push(card(String(index), suit))
+  }
+
+  const game = createGame(seats, 2, deck)
+  const previousPlayerHand = game.hands.p2
+
+  assert.equal(game.trump, 'hearts')
+  assert.ok(previousPlayerHand.some((deckCard) => deckCard.suit === 'hearts'))
+})
+
 test('keeps the completed trick visible until resolution and then finishes the round', () => {
   const seats = ['p1', 'p2', 'p3', 'p4']
   const game = createGame(seats)
@@ -258,6 +282,21 @@ test('bot preserves high trump when partner is already winning a trump trick', (
   )
 
   assert.equal(chosen.id, 'Q-clubs')
+})
+
+test('bot embarks high off-suit points when partner is safely winning and it is void in the lead suit', () => {
+  const chosen = pickBotCard(
+    [card('A', 'spades'), card('3', 'diamonds'), card('2', 'clubs')],
+    [
+      { seatIndex: 0, playerId: 'p1', card: card('2', 'hearts') },
+      { seatIndex: 1, playerId: 'p2', card: card('A', 'hearts') },
+      { seatIndex: 2, playerId: 'p3', card: card('Q', 'hearts') },
+    ],
+    'clubs',
+    3,
+  )
+
+  assert.equal(chosen.id, 'A-spades')
 })
 
 test('bot adds points when partner is safely winning the trick', () => {
