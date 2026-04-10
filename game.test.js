@@ -245,6 +245,21 @@ test('bot adds points when partner is already winning the trick safely', () => {
   assert.equal(chosen.id, 'A-spades')
 })
 
+test('bot preserves high trump when partner is already winning a trump trick', () => {
+  const chosen = pickBotCard(
+    [card('7', 'clubs'), card('Q', 'clubs')],
+    [
+      { seatIndex: 0, playerId: 'p1', card: card('A', 'clubs') },
+      { seatIndex: 1, playerId: 'p2', card: card('2', 'clubs') },
+      { seatIndex: 2, playerId: 'p3', card: card('3', 'hearts') },
+    ],
+    'clubs',
+    3,
+  )
+
+  assert.equal(chosen.id, 'Q-clubs')
+})
+
 test('bot adds points when partner is safely winning the trick', () => {
   const chosen = pickBotCard(
     [card('7', 'clubs'), card('Q', 'clubs')],

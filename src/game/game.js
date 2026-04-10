@@ -384,8 +384,10 @@ function pickBotCard(hand, currentTrick, trumpSuit, seatIndex = -1, completedTri
       const pointCards = followSuitCards.filter((card) => card.points > 0)
       const partnerLooksSafe =
         lastToAct || currentWinningPlay.card.suit === trumpSuit || currentWinningPlay.card.rank === 'A' || currentWinningPlay.card.rank === '7'
+      const trickIsTrumpLed = leadSuit === trumpSuit
 
-      if (partnerLooksSafe && pointCards.length > 0) {
+      // Preserve high trumps when our partner is already winning a trump trick.
+      if (!trickIsTrumpLed && partnerLooksSafe && pointCards.length > 0) {
         return pickHighestPoints(pointCards)
       }
     }
