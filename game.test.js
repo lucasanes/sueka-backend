@@ -1,6 +1,6 @@
 const test = require('node:test')
 const assert = require('node:assert/strict')
-const { applyRoundResult, createGame, playCard, resolveTrick } = require('./game')
+const { applyRoundResult, createGame, pickBotCard, playCard, resolvePendingTrick, resolveTrick } = require('./game')
 
 function card(rank, suit) {
   return { id: `${rank}-${suit}`, rank, suit, points: { A: 11, 7: 10, K: 4, J: 3, Q: 2 }[rank] ?? 0 }
@@ -33,7 +33,7 @@ test('player must follow the lead suit when possible', () => {
   assert.doesNotThrow(() => playCard(game, seats, 'p2', '2-hearts'))
 })
 
-test('finishes after all hands are empty and scores the last trick', () => {
+test('keeps the completed trick visible until resolution and then finishes the round', () => {
   const seats = ['p1', 'p2', 'p3', 'p4']
   const game = createGame(seats)
   game.trump = 'clubs'
@@ -51,8 +51,20 @@ test('finishes after all hands are empty and scores the last trick', () => {
   const result = playCard(game, seats, 'p4', 'Q-hearts')
 
   assert.equal(result.finished, true)
+  assert.equal(game.currentTrick.length, 4)
+  assert.equal(game.pendingTrickResolution?.cards.length, 4)
+  assert.equal(game.scores[0], 0)
+  assert.equal(game.currentTurnSeat, null)
+
+  const resolved = resolvePendingTrick(game)
+
+  assert.equal(resolved.finished, true)
+  assert.equal(game.currentTrick.length, 0)
   assert.equal(game.scores[0], 27)
   assert.equal(game.winnerTeam, 0)
+  assert.equal(game.wonTricks[0].length, 1)
+  assert.equal(game.wonTricks[0][0].trickNumber, 1)
+  assert.equal(game.wonTricks[0][0].cards.length, 4)
 })
 
 test('tie keeps match score and increases next round value', () => {
@@ -71,4 +83,22 @@ test('round win adds carried value and can finish the sueka match', () => {
     nextRoundStake: 1,
     matchWinner: 0,
   })
+})
+
+test('bot follows the lead suit with the weakest valid card', () => {
+  const chosen = pickBotCard([card('A', 'hearts'), card('2', 'hearts'), card('K', 'spades')], [{ seatIndex: 0, playerId: 'p1', card: card('7', 'hearts') }], 'spades')
+
+  assert.equal(chosen.id, '2-hearts')
+})
+
+test('bot discards the weakest non-trump when it cannot follow suit', () => {
+  const chosen = pickBotCard([card('A', 'clubs'), card('3', 'diamonds'), card('2', 'spades')], [{ seatIndex: 0, playerId: 'p1', card: card('7', 'hearts') }], 'spades')
+
+  assert.equal(chosen.id, '3-diamonds')
+})
+
+test('bot uses the weakest trump when only trump cards are available', () => {
+  const chosen = pickBotCard([card('A', 'spades'), card('2', 'spades')], [{ seatIndex: 0, playerId: 'p1', card: card('7', 'hearts') }], 'spades')
+
+  assert.equal(chosen.id, '2-spades')
 })
