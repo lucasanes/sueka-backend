@@ -111,26 +111,47 @@ function compareStrongCards(a, b) {
   return SUITS.indexOf(a.suit) - SUITS.indexOf(b.suit)
 }
 
+function trickPoints(currentTrick) {
+  return currentTrick.reduce((total, play) => total + play.card.points, 0)
+}
+
+function countSuitCards(hand, suit) {
+  return hand.filter((card) => card.suit === suit).length
+}
+
+function pickLowest(cards) {
+  return [...cards].sort(compareWeakCards)[0]
+}
+
+function pickHighest(cards) {
+  return [...cards].sort(compareStrongCards)[0]
+}
+
 function pickOpeningCard(playableCards, trumpSuit) {
   const sevensWithAceSupport = playableCards.filter(
     (card) => card.rank === '7' && playableCards.some((other) => other.suit === card.suit && other.rank === 'A'),
   )
   if (sevensWithAceSupport.length > 0) {
-    return [...sevensWithAceSupport].sort(compareStrongCards)[0]
+    return pickHighest(sevensWithAceSupport)
   }
 
   const nonTrumpAces = playableCards.filter((card) => card.rank === 'A' && card.suit !== trumpSuit)
   if (nonTrumpAces.length > 0) {
-    return [...nonTrumpAces].sort(compareStrongCards)[0]
+    return pickHighest(nonTrumpAces)
+  }
+
+  const nonTrumpSevens = playableCards.filter((card) => card.rank === '7' && card.suit !== trumpSuit)
+  if (nonTrumpSevens.length > 0) {
+    return pickHighest(nonTrumpSevens)
   }
 
   const anyAces = playableCards.filter((card) => card.rank === 'A')
   if (anyAces.length > 0) {
-    return [...anyAces].sort(compareStrongCards)[0]
+    return pickHighest(anyAces)
   }
 
   const nonTrumpCards = playableCards.filter((card) => card.suit !== trumpSuit)
-  return [...(nonTrumpCards.length > 0 ? nonTrumpCards : playableCards)].sort(compareWeakCards)[0]
+  return pickLowest(nonTrumpCards.length > 0 ? nonTrumpCards : playableCards)
 }
 
 function getCurrentWinningPlay(currentTrick, trumpSuit) {
@@ -149,6 +170,31 @@ function comparePlayableStrength(a, b, leadSuit, trumpSuit) {
   return compareWeakCards(a, b)
 }
 
+function preferAggressiveWinner(winningCards, leadSuit, trumpSuit, currentTrick) {
+  const pointsOnTable = trickPoints(currentTrick)
+  const lastToAct = currentTrick.length === 3
+  const sameSuitWinners = winningCards.filter((card) => card.suit === leadSuit)
+  const trumpWinners = winningCards.filter((card) => card.suit === trumpSuit)
+
+  if (sameSuitWinners.length > 0) {
+    const aces = sameSuitWinners.filter((card) => card.rank === 'A')
+    if (aces.length > 0 && (pointsOnTable >= 4 || lastToAct)) {
+      return pickHighest(aces)
+    }
+
+    const sevens = sameSuitWinners.filter((card) => card.rank === '7')
+    if (sevens.length > 0 && (pointsOnTable >= 10 || lastToAct)) {
+      return pickHighest(sevens)
+    }
+  }
+
+  if (trumpWinners.length > 0) {
+    return pickLowest(trumpWinners)
+  }
+
+  return winningCards[0]
+}
+
 function pickBotCard(hand, currentTrick, trumpSuit, seatIndex = -1) {
   const playableCards = hand.filter((card) => canPlayCard(hand, currentTrick, card))
   if (playableCards.length === 0) {
@@ -163,6 +209,9 @@ function pickBotCard(hand, currentTrick, trumpSuit, seatIndex = -1) {
   const currentWinningPlay = getCurrentWinningPlay(currentTrick, trumpSuit)
   const partnerSeat = seatIndex === -1 ? -1 : (seatIndex + 2) % 4
   const partnerWinning = currentWinningPlay.seatIndex === partnerSeat
+  const pointsOnTable = trickPoints(currentTrick)
+  const followSuitCards = playableCards.filter((card) => card.suit === leadSuit)
+  const trumpCards = playableCards.filter((card) => card.suit === trumpSuit)
 
   if (!partnerWinning) {
     const winningCards = playableCards
@@ -170,31 +219,39 @@ function pickBotCard(hand, currentTrick, trumpSuit, seatIndex = -1) {
       .sort((left, right) => comparePlayableStrength(left, right, leadSuit, trumpSuit))
 
     if (winningCards.length > 0) {
-      const aceWinner = winningCards.find((card) => card.rank === 'A')
-      if (aceWinner) {
-        return aceWinner
-      }
-
-      const sevenWinner = winningCards.find((card) => card.rank === '7')
-      if (sevenWinner) {
-        return sevenWinner
-      }
-
-      return winningCards[0]
+      return preferAggressiveWinner(winningCards, leadSuit, trumpSuit, currentTrick)
     }
   }
 
-  const followSuitCards = playableCards.filter((card) => card.suit === leadSuit)
   if (followSuitCards.length > 0) {
-    return [...followSuitCards].sort(compareWeakCards)[0]
+    const highCards = followSuitCards.filter((card) => card.rank === 'A' || card.rank === '7')
+    if (!partnerWinning && highCards.length > 0 && (pointsOnTable >= 4 || currentTrick.length >= 2)) {
+      return pickHighest(highCards)
+    }
+
+    return pickLowest(followSuitCards)
+  }
+
+  if (partnerWinning) {
+    const nonTrumpCards = playableCards.filter((card) => card.suit !== trumpSuit)
+    if (nonTrumpCards.length > 0) {
+      return pickLowest(nonTrumpCards)
+    }
+    return pickLowest(trumpCards)
   }
 
   const nonTrumpCards = playableCards.filter((card) => card.suit !== trumpSuit)
   if (nonTrumpCards.length > 0) {
-    return [...nonTrumpCards].sort(compareWeakCards)[0]
+    if (pointsOnTable < 10) {
+      return pickLowest(nonTrumpCards)
+    }
+    if (trumpCards.length > 0) {
+      return pickLowest(trumpCards)
+    }
+    return pickLowest(nonTrumpCards)
   }
 
-  return [...playableCards].sort(compareWeakCards)[0]
+  return pickLowest(playableCards)
 }
 
 function compareCards(a, b, leadSuit, trumpSuit) {

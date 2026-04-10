@@ -139,8 +139,32 @@ test('bot uses trump when it cannot follow suit and can win the trick', () => {
   assert.equal(chosen.id, '2-spades')
 })
 
-test('bot uses the ace trump when that is the strongest guaranteed cut available', () => {
+test('bot cuts with the weakest trump that still wins the trick', () => {
   const chosen = pickBotCard([card('A', 'spades'), card('2', 'spades')], [{ seatIndex: 0, playerId: 'p1', card: card('7', 'hearts') }], 'spades')
 
-  assert.equal(chosen.id, 'A-spades')
+  assert.equal(chosen.id, '2-spades')
+})
+
+test('bot avoids cutting a low-value trick with an unnecessarily high trump', () => {
+  const chosen = pickBotCard(
+    [card('A', 'spades'), card('3', 'spades')],
+    [{ seatIndex: 0, playerId: 'p1', card: card('2', 'clubs') }],
+    'spades',
+    1,
+  )
+
+  assert.equal(chosen.id, '3-spades')
+})
+
+test('bot spends a strong follow-suit card when the trick already has many points', () => {
+  const chosen = pickBotCard(
+    [card('A', 'hearts'), card('2', 'hearts')],
+    [
+      { seatIndex: 0, playerId: 'p1', card: card('K', 'hearts') },
+    ],
+    'spades',
+    1,
+  )
+
+  assert.equal(chosen.id, 'A-hearts')
 })
