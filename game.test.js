@@ -139,6 +139,12 @@ test('bot uses a stronger follow-suit card when it can take the trick', () => {
   assert.equal(chosen.id, 'A-hearts')
 })
 
+test('bot takes a non-trump lead immediately with the ace of that suit', () => {
+  const chosen = pickBotCard([card('A', 'clubs'), card('Q', 'clubs')], [{ seatIndex: 0, playerId: 'p1', card: card('2', 'clubs') }], 'hearts', 1)
+
+  assert.equal(chosen.id, 'A-clubs')
+})
+
 test('bot opens with an ace in most normal leads', () => {
   const chosen = pickBotCard([card('A', 'clubs'), card('Q', 'hearts'), card('3', 'spades')], [], 'diamonds', 0)
 
@@ -261,4 +267,26 @@ test('bot does not throw seven under an enemy ace when a lower card is available
   )
 
   assert.equal(chosen.id, '3-spades')
+})
+
+test('bot preserves seven when losing a trick and a two of the same suit is available', () => {
+  const chosen = pickBotCard(
+    [card('7', 'clubs'), card('2', 'clubs')],
+    [{ seatIndex: 0, playerId: 'p1', card: card('A', 'clubs') }],
+    'hearts',
+    1,
+  )
+
+  assert.equal(chosen.id, '2-clubs')
+})
+
+test('bot preserves higher point cards when dumping under an unbeatable ace', () => {
+  const chosen = pickBotCard(
+    [card('7', 'clubs'), card('K', 'clubs'), card('Q', 'clubs')],
+    [{ seatIndex: 0, playerId: 'p1', card: card('A', 'clubs') }],
+    'hearts',
+    1,
+  )
+
+  assert.equal(chosen.id, 'Q-clubs')
 })

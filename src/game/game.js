@@ -158,6 +158,22 @@ function pickHighestPoints(cards) {
   })[0]
 }
 
+function pickSafestLoser(cards) {
+  const zeroPointCards = cards.filter((card) => card.points === 0)
+  if (zeroPointCards.length > 0) {
+    return pickLowest(zeroPointCards)
+  }
+
+  return [...cards].sort((left, right) => {
+    const pointDiff = left.points - right.points
+    if (pointDiff !== 0) {
+      return pointDiff
+    }
+
+    return compareWeakCards(left, right)
+  })[0]
+}
+
 function totalPoints(cards) {
   return cards.reduce((sum, card) => sum + card.points, 0)
 }
@@ -226,6 +242,10 @@ function preferAggressiveWinner(winningCards, leadSuit, trumpSuit, currentTrick)
 
   if (sameSuitWinners.length > 0) {
     const aces = sameSuitWinners.filter((card) => card.rank === 'A')
+    if (aces.length > 0 && leadSuit !== trumpSuit) {
+      return pickHighest(aces)
+    }
+
     if (aces.length > 0 && (pointsOnTable >= 4 || lastToAct)) {
       return pickHighest(aces)
     }
@@ -283,29 +303,29 @@ function pickBotCard(hand, currentTrick, trumpSuit, seatIndex = -1) {
       }
     }
 
-    return pickLowest(followSuitCards)
+    return pickSafestLoser(followSuitCards)
   }
 
   if (partnerWinning) {
     const nonTrumpCards = playableCards.filter((card) => card.suit !== trumpSuit)
     if (nonTrumpCards.length > 0) {
-      return pickLowest(nonTrumpCards)
+      return pickSafestLoser(nonTrumpCards)
     }
-    return pickLowest(trumpCards)
+    return pickSafestLoser(trumpCards)
   }
 
   const nonTrumpCards = playableCards.filter((card) => card.suit !== trumpSuit)
   if (nonTrumpCards.length > 0) {
     if (pointsOnTable < 10) {
-      return pickLowest(nonTrumpCards)
+      return pickSafestLoser(nonTrumpCards)
     }
     if (trumpCards.length > 0) {
-      return pickLowest(trumpCards)
+      return pickSafestLoser(trumpCards)
     }
-    return pickLowest(nonTrumpCards)
+    return pickSafestLoser(nonTrumpCards)
   }
 
-  return pickLowest(playableCards)
+  return pickSafestLoser(playableCards)
 }
 
 function compareCards(a, b, leadSuit, trumpSuit) {
