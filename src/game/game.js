@@ -224,11 +224,6 @@ function pickBotCard(hand, currentTrick, trumpSuit, seatIndex = -1) {
   }
 
   if (followSuitCards.length > 0) {
-    const highCards = followSuitCards.filter((card) => card.rank === 'A' || card.rank === '7')
-    if (!partnerWinning && highCards.length > 0 && (pointsOnTable >= 4 || currentTrick.length >= 2)) {
-      return pickHighest(highCards)
-    }
-
     return pickLowest(followSuitCards)
   }
 

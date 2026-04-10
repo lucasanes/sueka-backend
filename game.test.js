@@ -168,3 +168,14 @@ test('bot spends a strong follow-suit card when the trick already has many point
 
   assert.equal(chosen.id, 'A-hearts')
 })
+
+test('bot does not throw seven under an enemy ace when a lower card is available', () => {
+  const chosen = pickBotCard(
+    [card('7', 'spades'), card('3', 'spades')],
+    [{ seatIndex: 0, playerId: 'p1', card: card('A', 'spades') }],
+    'hearts',
+    1,
+  )
+
+  assert.equal(chosen.id, '3-spades')
+})
