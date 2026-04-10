@@ -158,12 +158,28 @@ function pickHighestPoints(cards) {
   })[0]
 }
 
-function pickOpeningCard(playableCards, trumpSuit) {
-  const sevensWithAceSupport = playableCards.filter(
+function totalPoints(cards) {
+  return cards.reduce((sum, card) => sum + card.points, 0)
+}
+
+function pickPassagemCard(playableCards, trumpSuit) {
+  const supportedSevens = playableCards.filter(
     (card) => card.rank === '7' && playableCards.some((other) => other.suit === card.suit && other.rank === 'A'),
   )
-  if (sevensWithAceSupport.length > 0) {
-    return pickHighest(sevensWithAceSupport)
+
+  const passagemCandidates = supportedSevens.filter((card) => {
+    const suitCards = playableCards.filter((other) => other.suit === card.suit)
+    const minimumSuitLength = card.suit === trumpSuit ? 4 : 3
+    return suitCards.length >= minimumSuitLength
+  })
+
+  return passagemCandidates.length > 0 ? pickHighest(passagemCandidates) : null
+}
+
+function pickOpeningCard(playableCards, trumpSuit) {
+  const passagemCard = pickPassagemCard(playableCards, trumpSuit)
+  if (passagemCard) {
+    return passagemCard
   }
 
   const nonTrumpAces = playableCards.filter((card) => card.rank === 'A' && card.suit !== trumpSuit)
@@ -171,12 +187,18 @@ function pickOpeningCard(playableCards, trumpSuit) {
     return pickHighest(nonTrumpAces)
   }
 
-  const anyAces = playableCards.filter((card) => card.rank === 'A')
-  if (anyAces.length > 0) {
-    return pickHighest(anyAces)
+  const trumpCards = playableCards.filter((card) => card.suit === trumpSuit)
+  const trumpAces = trumpCards.filter((card) => card.rank === 'A')
+  const nonTrumpCards = playableCards.filter((card) => card.suit !== trumpSuit)
+  const canSafelyPullTrump =
+    trumpCards.length >= 4 &&
+    totalPoints(trumpCards) >= 25 &&
+    trumpCards.some((card) => card.rank === '7' || card.rank === 'K' || card.rank === 'J' || card.rank === 'Q')
+
+  if (trumpAces.length > 0 && (nonTrumpCards.length === 0 || canSafelyPullTrump)) {
+    return pickHighest(trumpAces)
   }
 
-  const nonTrumpCards = playableCards.filter((card) => card.suit !== trumpSuit)
   return pickLowest(nonTrumpCards.length > 0 ? nonTrumpCards : playableCards)
 }
 

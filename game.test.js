@@ -145,10 +145,28 @@ test('bot opens with an ace in most normal leads', () => {
   assert.equal(chosen.id, 'A-clubs')
 })
 
-test('bot can make passagem by opening with seven when it also holds the ace of that suit', () => {
-  const chosen = pickBotCard([card('7', 'clubs'), card('A', 'clubs'), card('3', 'hearts')], [], 'spades', 0)
+test('bot avoids pulling trump immediately with a lone trump ace when safer off-suit leads exist', () => {
+  const chosen = pickBotCard([card('A', 'spades'), card('K', 'hearts'), card('3', 'clubs')], [], 'spades', 0)
+
+  assert.equal(chosen.id, '3-clubs')
+})
+
+test('bot can still make passagem even with a very strong trump suit', () => {
+  const chosen = pickBotCard([card('A', 'spades'), card('7', 'spades'), card('K', 'spades'), card('2', 'spades')], [], 'spades', 0)
+
+  assert.equal(chosen.id, '7-spades')
+})
+
+test('bot can make passagem when it has real support in that suit', () => {
+  const chosen = pickBotCard([card('7', 'clubs'), card('A', 'clubs'), card('3', 'clubs')], [], 'spades', 0)
 
   assert.equal(chosen.id, '7-clubs')
+})
+
+test('bot avoids passagem when it only has seven and ace with no extra suit support', () => {
+  const chosen = pickBotCard([card('7', 'clubs'), card('A', 'clubs'), card('3', 'hearts')], [], 'spades', 0)
+
+  assert.equal(chosen.id, 'A-clubs')
 })
 
 test('bot avoids opening with an unsupported seven when a safer lead exists', () => {
