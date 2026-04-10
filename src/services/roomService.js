@@ -286,7 +286,8 @@ function createRoomService({ io, rooms, socketRefs, env }) {
 
       try {
         const botHand = room.game.hands[bot.id] ?? []
-        const card = pickBotCard(botHand, room.game.currentTrick, room.game.trump, room.game.currentTurnSeat)
+        const completedTricks = room.game.wonTricks.flat()
+        const card = pickBotCard(botHand, room.game.currentTrick, room.game.trump, room.game.currentTurnSeat, completedTricks)
         playTurn(room, bot, card.id)
       } catch {
         emitEvent(room, `${bot.name} não conseguiu jogar.`)

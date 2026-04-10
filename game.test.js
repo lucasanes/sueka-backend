@@ -181,6 +181,40 @@ test('bot avoids opening with an unsupported seven when a safer lead exists', ()
   assert.equal(chosen.id, '2-spades')
 })
 
+test('bot pulls a suit that its partner has already cut before', () => {
+  const completedTricks = [
+    {
+      cards: [
+        { seatIndex: 1, playerId: 'p2', card: card('K', 'clubs') },
+        { seatIndex: 2, playerId: 'p3', card: card('2', 'spades') },
+        { seatIndex: 3, playerId: 'p4', card: card('Q', 'clubs') },
+        { seatIndex: 0, playerId: 'p1', card: card('3', 'clubs') },
+      ],
+    },
+  ]
+
+  const chosen = pickBotCard([card('4', 'clubs'), card('2', 'hearts')], [], 'spades', 0, completedTricks)
+
+  assert.equal(chosen.id, '4-clubs')
+})
+
+test('bot avoids pulling a suit when an opponent has already shown void in it', () => {
+  const completedTricks = [
+    {
+      cards: [
+        { seatIndex: 0, playerId: 'p1', card: card('K', 'hearts') },
+        { seatIndex: 1, playerId: 'p2', card: card('2', 'spades') },
+        { seatIndex: 2, playerId: 'p3', card: card('Q', 'hearts') },
+        { seatIndex: 3, playerId: 'p4', card: card('3', 'hearts') },
+      ],
+    },
+  ]
+
+  const chosen = pickBotCard([card('4', 'hearts'), card('2', 'clubs')], [], 'spades', 0, completedTricks)
+
+  assert.equal(chosen.id, '2-clubs')
+})
+
 test('bot wins the trick with the weakest card that still beats the current winner', () => {
   const chosen = pickBotCard(
     [card('A', 'spades'), card('Q', 'spades')],

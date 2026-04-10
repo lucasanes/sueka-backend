@@ -178,6 +178,89 @@ function totalPoints(cards) {
   return cards.reduce((sum, card) => sum + card.points, 0)
 }
 
+function flattenCompletedTricks(completedTricks) {
+  return completedTricks.flatMap((entry) => (entry?.cards ? [entry.cards] : Array.isArray(entry) ? [entry] : []))
+}
+
+function inferSuitKnowledge(completedTricks, trumpSuit) {
+  const voidSuitsBySeat = new Map()
+  const cutSuitsBySeat = new Map()
+
+  for (const trick of flattenCompletedTricks(completedTricks)) {
+    if (!Array.isArray(trick) || trick.length === 0) {
+      continue
+    }
+
+    const leadSuit = trick[0].card.suit
+
+    for (const play of trick) {
+      if (play.card.suit === leadSuit) {
+        continue
+      }
+
+      const seatVoids = voidSuitsBySeat.get(play.seatIndex) ?? new Set()
+      seatVoids.add(leadSuit)
+      voidSuitsBySeat.set(play.seatIndex, seatVoids)
+
+      if (play.card.suit === trumpSuit && leadSuit !== trumpSuit) {
+        const seatCuts = cutSuitsBySeat.get(play.seatIndex) ?? new Set()
+        seatCuts.add(leadSuit)
+        cutSuitsBySeat.set(play.seatIndex, seatCuts)
+      }
+    }
+  }
+
+  return { voidSuitsBySeat, cutSuitsBySeat }
+}
+
+function scoreOpeningSuit(suit, suitCards, seatIndex, completedTricks, trumpSuit) {
+  if (seatIndex === -1 || completedTricks.length === 0) {
+    return 0
+  }
+
+  const { voidSuitsBySeat, cutSuitsBySeat } = inferSuitKnowledge(completedTricks, trumpSuit)
+  const partnerSeat = (seatIndex + 2) % 4
+  const enemySeats = [1, 3].map((offset) => (seatIndex + offset) % 4)
+  const partnerCuts = cutSuitsBySeat.get(partnerSeat)
+
+  let score = 0
+
+  if (partnerCuts?.has(suit)) {
+    score += 4
+  }
+
+  for (const enemySeat of enemySeats) {
+    if (voidSuitsBySeat.get(enemySeat)?.has(suit)) {
+      score -= 3
+    }
+  }
+
+  score += Math.min(suitCards.length - 1, 2)
+
+  return score
+}
+
+function pickKnowledgeBasedOpeningCard(cards, seatIndex, completedTricks, trumpSuit) {
+  const cardsBySuit = new Map()
+
+  for (const card of cards) {
+    const suitCards = cardsBySuit.get(card.suit) ?? []
+    suitCards.push(card)
+    cardsBySuit.set(card.suit, suitCards)
+  }
+
+  const rankedSuits = [...cardsBySuit.entries()].sort((left, right) => {
+    const scoreDiff = scoreOpeningSuit(right[0], right[1], seatIndex, completedTricks, trumpSuit) - scoreOpeningSuit(left[0], left[1], seatIndex, completedTricks, trumpSuit)
+    if (scoreDiff !== 0) {
+      return scoreDiff
+    }
+
+    return pickLowest(left[1]).id.localeCompare(pickLowest(right[1]).id)
+  })
+
+  return pickLowest(rankedSuits[0][1])
+}
+
 function pickPassagemCard(playableCards, trumpSuit) {
   const supportedSevens = playableCards.filter(
     (card) => card.rank === '7' && playableCards.some((other) => other.suit === card.suit && other.rank === 'A'),
@@ -192,7 +275,7 @@ function pickPassagemCard(playableCards, trumpSuit) {
   return passagemCandidates.length > 0 ? pickHighest(passagemCandidates) : null
 }
 
-function pickOpeningCard(playableCards, trumpSuit) {
+function pickOpeningCard(playableCards, trumpSuit, seatIndex = -1, completedTricks = []) {
   const passagemCard = pickPassagemCard(playableCards, trumpSuit)
   if (passagemCard) {
     return passagemCard
@@ -215,7 +298,11 @@ function pickOpeningCard(playableCards, trumpSuit) {
     return pickHighest(trumpAces)
   }
 
-  return pickLowest(nonTrumpCards.length > 0 ? nonTrumpCards : playableCards)
+  if (nonTrumpCards.length > 0) {
+    return pickKnowledgeBasedOpeningCard(nonTrumpCards, seatIndex, completedTricks, trumpSuit)
+  }
+
+  return pickKnowledgeBasedOpeningCard(playableCards, seatIndex, completedTricks, trumpSuit)
 }
 
 function getCurrentWinningPlay(currentTrick, trumpSuit) {
@@ -263,14 +350,14 @@ function preferAggressiveWinner(winningCards, leadSuit, trumpSuit, currentTrick)
   return winningCards[0]
 }
 
-function pickBotCard(hand, currentTrick, trumpSuit, seatIndex = -1) {
+function pickBotCard(hand, currentTrick, trumpSuit, seatIndex = -1, completedTricks = []) {
   const playableCards = hand.filter((card) => canPlayCard(hand, currentTrick, card))
   if (playableCards.length === 0) {
     throw new Error('NO_PLAYABLE_CARDS')
   }
 
   if (currentTrick.length === 0) {
-    return pickOpeningCard(playableCards, trumpSuit)
+    return pickOpeningCard(playableCards, trumpSuit, seatIndex, completedTricks)
   }
 
   const leadSuit = currentTrick[0].card.suit
