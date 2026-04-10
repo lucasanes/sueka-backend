@@ -127,6 +127,17 @@ function pickHighest(cards) {
   return [...cards].sort(compareStrongCards)[0]
 }
 
+function pickHighestPoints(cards) {
+  return [...cards].sort((left, right) => {
+    const pointDiff = right.points - left.points
+    if (pointDiff !== 0) {
+      return pointDiff
+    }
+
+    return compareStrongCards(left, right)
+  })[0]
+}
+
 function pickOpeningCard(playableCards, trumpSuit) {
   const sevensWithAceSupport = playableCards.filter(
     (card) => card.rank === '7' && playableCards.some((other) => other.suit === card.suit && other.rank === 'A'),
@@ -210,6 +221,7 @@ function pickBotCard(hand, currentTrick, trumpSuit, seatIndex = -1) {
   const partnerSeat = seatIndex === -1 ? -1 : (seatIndex + 2) % 4
   const partnerWinning = currentWinningPlay.seatIndex === partnerSeat
   const pointsOnTable = trickPoints(currentTrick)
+  const lastToAct = currentTrick.length === 3
   const followSuitCards = playableCards.filter((card) => card.suit === leadSuit)
   const trumpCards = playableCards.filter((card) => card.suit === trumpSuit)
 
@@ -224,6 +236,16 @@ function pickBotCard(hand, currentTrick, trumpSuit, seatIndex = -1) {
   }
 
   if (followSuitCards.length > 0) {
+    if (partnerWinning) {
+      const pointCards = followSuitCards.filter((card) => card.points > 0)
+      const partnerLooksSafe =
+        lastToAct || currentWinningPlay.card.suit === trumpSuit || currentWinningPlay.card.rank === 'A' || currentWinningPlay.card.rank === '7'
+
+      if (partnerLooksSafe && pointCards.length > 0) {
+        return pickHighestPoints(pointCards)
+      }
+    }
+
     return pickLowest(followSuitCards)
   }
 

@@ -118,7 +118,7 @@ test('bot wins the trick with the weakest card that still beats the current winn
   assert.equal(chosen.id, 'A-spades')
 })
 
-test('bot preserves high card when partner is already winning the trick', () => {
+test('bot adds points when partner is already winning the trick safely', () => {
   const chosen = pickBotCard(
     [card('A', 'spades'), card('Q', 'spades')],
     [
@@ -130,7 +130,18 @@ test('bot preserves high card when partner is already winning the trick', () => 
     3,
   )
 
-  assert.equal(chosen.id, 'Q-spades')
+  assert.equal(chosen.id, 'A-spades')
+})
+
+test('bot adds points when partner is safely winning the trick', () => {
+  const chosen = pickBotCard(
+    [card('7', 'clubs'), card('Q', 'clubs')],
+    [{ seatIndex: 0, playerId: 'p1', card: card('A', 'clubs') }],
+    'hearts',
+    2,
+  )
+
+  assert.equal(chosen.id, '7-clubs')
 })
 
 test('bot uses trump when it cannot follow suit and can win the trick', () => {
