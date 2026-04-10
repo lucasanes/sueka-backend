@@ -91,6 +91,18 @@ test('bot uses a stronger follow-suit card when it can take the trick', () => {
   assert.equal(chosen.id, 'A-hearts')
 })
 
+test('bot opens with an ace in most normal leads', () => {
+  const chosen = pickBotCard([card('A', 'clubs'), card('Q', 'hearts'), card('3', 'spades')], [], 'diamonds', 0)
+
+  assert.equal(chosen.id, 'A-clubs')
+})
+
+test('bot can make passagem by opening with seven when it also holds the ace of that suit', () => {
+  const chosen = pickBotCard([card('7', 'clubs'), card('A', 'clubs'), card('3', 'hearts')], [], 'spades', 0)
+
+  assert.equal(chosen.id, '7-clubs')
+})
+
 test('bot wins the trick with the weakest card that still beats the current winner', () => {
   const chosen = pickBotCard(
     [card('A', 'spades'), card('Q', 'spades')],
@@ -127,8 +139,8 @@ test('bot uses trump when it cannot follow suit and can win the trick', () => {
   assert.equal(chosen.id, '2-spades')
 })
 
-test('bot uses the weakest trump when only trump cards are available', () => {
+test('bot uses the ace trump when that is the strongest guaranteed cut available', () => {
   const chosen = pickBotCard([card('A', 'spades'), card('2', 'spades')], [{ seatIndex: 0, playerId: 'p1', card: card('7', 'hearts') }], 'spades')
 
-  assert.equal(chosen.id, '2-spades')
+  assert.equal(chosen.id, 'A-spades')
 })

@@ -102,6 +102,37 @@ function compareWeakCards(a, b) {
   return SUITS.indexOf(a.suit) - SUITS.indexOf(b.suit)
 }
 
+function compareStrongCards(a, b) {
+  const powerDiff = (RANK_POWER.get(b.rank) ?? 0) - (RANK_POWER.get(a.rank) ?? 0)
+  if (powerDiff !== 0) {
+    return powerDiff
+  }
+
+  return SUITS.indexOf(a.suit) - SUITS.indexOf(b.suit)
+}
+
+function pickOpeningCard(playableCards, trumpSuit) {
+  const sevensWithAceSupport = playableCards.filter(
+    (card) => card.rank === '7' && playableCards.some((other) => other.suit === card.suit && other.rank === 'A'),
+  )
+  if (sevensWithAceSupport.length > 0) {
+    return [...sevensWithAceSupport].sort(compareStrongCards)[0]
+  }
+
+  const nonTrumpAces = playableCards.filter((card) => card.rank === 'A' && card.suit !== trumpSuit)
+  if (nonTrumpAces.length > 0) {
+    return [...nonTrumpAces].sort(compareStrongCards)[0]
+  }
+
+  const anyAces = playableCards.filter((card) => card.rank === 'A')
+  if (anyAces.length > 0) {
+    return [...anyAces].sort(compareStrongCards)[0]
+  }
+
+  const nonTrumpCards = playableCards.filter((card) => card.suit !== trumpSuit)
+  return [...(nonTrumpCards.length > 0 ? nonTrumpCards : playableCards)].sort(compareWeakCards)[0]
+}
+
 function getCurrentWinningPlay(currentTrick, trumpSuit) {
   const leadSuit = currentTrick[0].card.suit
   return currentTrick.reduce((bestPlay, play) =>
@@ -125,8 +156,7 @@ function pickBotCard(hand, currentTrick, trumpSuit, seatIndex = -1) {
   }
 
   if (currentTrick.length === 0) {
-    const nonTrumpCards = playableCards.filter((card) => card.suit !== trumpSuit)
-    return [...(nonTrumpCards.length > 0 ? nonTrumpCards : playableCards)].sort(compareWeakCards)[0]
+    return pickOpeningCard(playableCards, trumpSuit)
   }
 
   const leadSuit = currentTrick[0].card.suit
@@ -140,6 +170,16 @@ function pickBotCard(hand, currentTrick, trumpSuit, seatIndex = -1) {
       .sort((left, right) => comparePlayableStrength(left, right, leadSuit, trumpSuit))
 
     if (winningCards.length > 0) {
+      const aceWinner = winningCards.find((card) => card.rank === 'A')
+      if (aceWinner) {
+        return aceWinner
+      }
+
+      const sevenWinner = winningCards.find((card) => card.rank === '7')
+      if (sevenWinner) {
+        return sevenWinner
+      }
+
       return winningCards[0]
     }
   }
