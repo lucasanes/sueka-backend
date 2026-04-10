@@ -102,7 +102,23 @@ function compareWeakCards(a, b) {
   return SUITS.indexOf(a.suit) - SUITS.indexOf(b.suit)
 }
 
-function pickBotCard(hand, currentTrick, trumpSuit) {
+function getCurrentWinningPlay(currentTrick, trumpSuit) {
+  const leadSuit = currentTrick[0].card.suit
+  return currentTrick.reduce((bestPlay, play) =>
+    compareCards(play.card, bestPlay.card, leadSuit, trumpSuit) > 0 ? play : bestPlay,
+  )
+}
+
+function comparePlayableStrength(a, b, leadSuit, trumpSuit) {
+  const result = compareCards(a, b, leadSuit, trumpSuit)
+  if (result !== 0) {
+    return result
+  }
+
+  return compareWeakCards(a, b)
+}
+
+function pickBotCard(hand, currentTrick, trumpSuit, seatIndex = -1) {
   const playableCards = hand.filter((card) => canPlayCard(hand, currentTrick, card))
   if (playableCards.length === 0) {
     throw new Error('NO_PLAYABLE_CARDS')
@@ -114,6 +130,20 @@ function pickBotCard(hand, currentTrick, trumpSuit) {
   }
 
   const leadSuit = currentTrick[0].card.suit
+  const currentWinningPlay = getCurrentWinningPlay(currentTrick, trumpSuit)
+  const partnerSeat = seatIndex === -1 ? -1 : (seatIndex + 2) % 4
+  const partnerWinning = currentWinningPlay.seatIndex === partnerSeat
+
+  if (!partnerWinning) {
+    const winningCards = playableCards
+      .filter((card) => compareCards(card, currentWinningPlay.card, leadSuit, trumpSuit) > 0)
+      .sort((left, right) => comparePlayableStrength(left, right, leadSuit, trumpSuit))
+
+    if (winningCards.length > 0) {
+      return winningCards[0]
+    }
+  }
+
   const followSuitCards = playableCards.filter((card) => card.suit === leadSuit)
   if (followSuitCards.length > 0) {
     return [...followSuitCards].sort(compareWeakCards)[0]

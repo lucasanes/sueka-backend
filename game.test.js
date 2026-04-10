@@ -85,16 +85,46 @@ test('round win adds carried value and can finish the sueka match', () => {
   })
 })
 
-test('bot follows the lead suit with the weakest valid card', () => {
+test('bot uses a stronger follow-suit card when it can take the trick', () => {
   const chosen = pickBotCard([card('A', 'hearts'), card('2', 'hearts'), card('K', 'spades')], [{ seatIndex: 0, playerId: 'p1', card: card('7', 'hearts') }], 'spades')
 
-  assert.equal(chosen.id, '2-hearts')
+  assert.equal(chosen.id, 'A-hearts')
 })
 
-test('bot discards the weakest non-trump when it cannot follow suit', () => {
+test('bot wins the trick with the weakest card that still beats the current winner', () => {
+  const chosen = pickBotCard(
+    [card('A', 'spades'), card('Q', 'spades')],
+    [
+      { seatIndex: 0, playerId: 'p1', card: card('7', 'spades') },
+      { seatIndex: 1, playerId: 'p2', card: card('K', 'spades') },
+      { seatIndex: 2, playerId: 'p3', card: card('Q', 'diamonds') },
+    ],
+    'clubs',
+    3,
+  )
+
+  assert.equal(chosen.id, 'A-spades')
+})
+
+test('bot preserves high card when partner is already winning the trick', () => {
+  const chosen = pickBotCard(
+    [card('A', 'spades'), card('Q', 'spades')],
+    [
+      { seatIndex: 0, playerId: 'p1', card: card('7', 'spades') },
+      { seatIndex: 1, playerId: 'p2', card: card('A', 'spades') },
+      { seatIndex: 2, playerId: 'p3', card: card('Q', 'diamonds') },
+    ],
+    'clubs',
+    3,
+  )
+
+  assert.equal(chosen.id, 'Q-spades')
+})
+
+test('bot uses trump when it cannot follow suit and can win the trick', () => {
   const chosen = pickBotCard([card('A', 'clubs'), card('3', 'diamonds'), card('2', 'spades')], [{ seatIndex: 0, playerId: 'p1', card: card('7', 'hearts') }], 'spades')
 
-  assert.equal(chosen.id, '3-diamonds')
+  assert.equal(chosen.id, '2-spades')
 })
 
 test('bot uses the weakest trump when only trump cards are available', () => {

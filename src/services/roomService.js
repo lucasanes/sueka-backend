@@ -9,6 +9,9 @@ const {
   teamForSeat,
 } = require('../game/game')
 
+const BOT_NAME_PREFIXES = ['Capitao', 'Mestre', 'Barao', 'Duque', 'Lorde', 'Sombra', 'Faulha', 'Brasa', 'Trunfo', 'Astro']
+const BOT_NAME_SUFFIXES = ['Copas', 'Espadas', 'Ouros', 'Paus', 'Sete', 'As', 'Valete', 'Rei', 'Dama', 'Vaza']
+
 function createRoomService({ io, rooms, socketRefs, env }) {
   function createId(prefix) {
     return `${prefix}_${crypto.randomBytes(8).toString('hex')}`
@@ -35,12 +38,21 @@ function createRoomService({ io, rooms, socketRefs, env }) {
   }
 
   function createBot(room) {
-    const botNumber = room.nextBotNumber
+    let name = ''
+    let attempts = 0
+
+    do {
+      const prefix = BOT_NAME_PREFIXES[Math.floor(Math.random() * BOT_NAME_PREFIXES.length)]
+      const suffix = BOT_NAME_SUFFIXES[Math.floor(Math.random() * BOT_NAME_SUFFIXES.length)]
+      name = `${prefix} ${suffix}`
+      attempts += 1
+    } while ([...room.players.values()].some((player) => player.name === name) && attempts < 20)
+
     room.nextBotNumber += 1
 
     return {
       id: createId('bot'),
-      name: `Bot ${botNumber}`,
+      name: attempts >= 20 ? `${name} ${room.nextBotNumber}` : name,
       sessionToken: null,
       socketId: null,
       connected: true,
@@ -274,7 +286,7 @@ function createRoomService({ io, rooms, socketRefs, env }) {
 
       try {
         const botHand = room.game.hands[bot.id] ?? []
-        const card = pickBotCard(botHand, room.game.currentTrick, room.game.trump)
+        const card = pickBotCard(botHand, room.game.currentTrick, room.game.trump, room.game.currentTurnSeat)
         playTurn(room, bot, card.id)
       } catch {
         emitEvent(room, `${bot.name} não conseguiu jogar.`)

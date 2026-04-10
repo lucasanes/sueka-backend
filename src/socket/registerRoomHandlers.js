@@ -124,7 +124,7 @@ function registerRoomHandlers(io, roomService) {
         roomService.emitError(socket, 'OWNER_ONLY', 'Só o dono da sala pode iniciar.')
         return
       }
-      if (room.status !== 'lobby') {
+      if (room.status === 'playing') {
         roomService.emitError(socket, 'GAME_ALREADY_STARTED', 'A partida já foi iniciada.')
         return
       }
@@ -133,10 +133,20 @@ function registerRoomHandlers(io, roomService) {
         return
       }
 
+      const wasFinished = room.status === 'finished'
+      roomService.clearBotTurnTimer(room)
+      roomService.clearTrickResolutionTimer(room)
+      if (room.matchWinnerTeam !== null) {
+        room.matchScore = [0, 0]
+        room.nextRoundStake = 1
+        room.matchWinnerTeam = null
+        roomService.emitEvent(room, 'Novo placar de Sueka iniciado.')
+      }
+
       room.game = createGame(room.seats)
       room.status = 'playing'
       room.updatedAt = Date.now()
-      roomService.emitEvent(room, 'A partida começou.')
+      roomService.emitEvent(room, wasFinished ? 'A próxima rodada começou.' : 'A partida começou.')
       roomService.broadcastRoom(room)
       roomService.scheduleBotTurn(room)
     })
