@@ -108,6 +108,16 @@ function createRoomService({ io, rooms, socketRefs, env }) {
     room.matchWinnerTeam = null
   }
 
+  function clearLobbySeats(room) {
+    room.seats = room.seats.map(() => null)
+
+    for (const [playerId, player] of room.players.entries()) {
+      if (player.kind === 'bot') {
+        room.players.delete(playerId)
+      }
+    }
+  }
+
   function countHumanPlayers(room) {
     return [...room.players.values()].filter((player) => player.kind !== 'bot').length
   }
@@ -459,6 +469,7 @@ function createRoomService({ io, rooms, socketRefs, env }) {
     clearBotTurnTimer,
     clearTrickResolutionTimer,
     resetMatchState,
+    clearLobbySeats,
     pruneExpiredPlayers,
     cleanupRooms,
   }

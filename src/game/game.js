@@ -217,6 +217,33 @@ function flattenCompletedTricks(completedTricks) {
   return completedTricks.flatMap((entry) => (entry?.cards ? [entry.cards] : Array.isArray(entry) ? [entry] : []))
 }
 
+function hasSeenAceOfSuit(suit, currentTrick = [], completedTricks = []) {
+  if (currentTrick.some((play) => play.card.suit === suit && play.card.rank === 'A')) {
+    return true
+  }
+
+  return flattenCompletedTricks(completedTricks).some((trick) =>
+    Array.isArray(trick) && trick.some((play) => play.card.suit === suit && play.card.rank === 'A'),
+  )
+}
+
+function isProtectedSeven(card, hand, currentTrick = [], completedTricks = []) {
+  if (card.rank !== '7') {
+    return false
+  }
+
+  if (hand.some((other) => other.suit === card.suit && other.rank === 'A')) {
+    return false
+  }
+
+  return !hasSeenAceOfSuit(card.suit, currentTrick, completedTricks)
+}
+
+function avoidProtectedSeven(cards, hand, currentTrick = [], completedTricks = []) {
+  const safeCards = cards.filter((card) => !isProtectedSeven(card, hand, currentTrick, completedTricks))
+  return safeCards.length > 0 ? safeCards : cards
+}
+
 function inferSuitKnowledge(completedTricks, trumpSuit) {
   const voidSuitsBySeat = new Map()
   const cutSuitsBySeat = new Map()
@@ -356,7 +383,7 @@ function comparePlayableStrength(a, b, leadSuit, trumpSuit) {
   return compareWeakCards(a, b)
 }
 
-function preferAggressiveWinner(winningCards, leadSuit, trumpSuit, currentTrick) {
+function preferAggressiveWinner(winningCards, hand, leadSuit, trumpSuit, currentTrick, completedTricks = []) {
   const pointsOnTable = trickPoints(currentTrick)
   const lastToAct = currentTrick.length === 3
   const sameSuitWinners = winningCards.filter((card) => card.suit === leadSuit)
@@ -374,15 +401,18 @@ function preferAggressiveWinner(winningCards, leadSuit, trumpSuit, currentTrick)
 
     const sevens = sameSuitWinners.filter((card) => card.rank === '7')
     if (sevens.length > 0 && (pointsOnTable >= 10 || lastToAct)) {
-      return pickHighest(sevens)
+      const allowedSevens = avoidProtectedSeven(sevens, hand, currentTrick, completedTricks)
+      if (allowedSevens.length > 0) {
+        return pickHighest(allowedSevens)
+      }
     }
   }
 
   if (trumpWinners.length > 0) {
-    return pickLowest(trumpWinners)
+    return pickLowest(avoidProtectedSeven(trumpWinners, hand, currentTrick, completedTricks))
   }
 
-  return winningCards[0]
+  return avoidProtectedSeven(winningCards, hand, currentTrick, completedTricks)[0]
 }
 
 function isPartnerWinnerSafe(currentWinningPlay, leadSuit, trumpSuit, lastToAct) {
@@ -422,13 +452,18 @@ function pickBotCard(hand, currentTrick, trumpSuit, seatIndex = -1, completedTri
       .sort((left, right) => comparePlayableStrength(left, right, leadSuit, trumpSuit))
 
     if (winningCards.length > 0) {
-      return preferAggressiveWinner(winningCards, leadSuit, trumpSuit, currentTrick)
+      return preferAggressiveWinner(winningCards, hand, leadSuit, trumpSuit, currentTrick, completedTricks)
     }
   }
 
   if (followSuitCards.length > 0) {
     if (partnerWinning) {
-      const pointCards = followSuitCards.filter((card) => card.points > 0)
+      const pointCards = avoidProtectedSeven(
+        followSuitCards.filter((card) => card.points > 0),
+        hand,
+        currentTrick,
+        completedTricks,
+      )
       const trickIsTrumpLed = leadSuit === trumpSuit
 
       // Preserve high trumps when our partner is already winning a trump trick.
@@ -442,7 +477,12 @@ function pickBotCard(hand, currentTrick, trumpSuit, seatIndex = -1, completedTri
 
   if (partnerWinning) {
     const nonTrumpCards = playableCards.filter((card) => card.suit !== trumpSuit)
-    const nonTrumpPointCards = nonTrumpCards.filter((card) => card.points > 0)
+    const nonTrumpPointCards = avoidProtectedSeven(
+      nonTrumpCards.filter((card) => card.points > 0),
+      hand,
+      currentTrick,
+      completedTricks,
+    )
 
     if (partnerLooksSafe && nonTrumpPointCards.length > 0) {
       return pickHighestPoints(nonTrumpPointCards)

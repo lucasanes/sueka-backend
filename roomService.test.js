@@ -360,3 +360,56 @@ test('reiniciar mantém a mesma pessoa começando a rodada', () => {
   assert.equal(room.game.currentTurnSeat, 2)
   assert.equal(room.nextStartingSeat, 3)
 })
+
+test('reiniciar a partida esvazia todos os assentos e remove bots', () => {
+  const io = createIoDouble()
+  const service = createRoomService({
+    io,
+    rooms: new Map(),
+    socketRefs: new Map(),
+    env: {
+      BOT_TURN_DELAY_MS: 0,
+      TRICK_REVEAL_MS: 0,
+      ROOM_TTL_MS: 60_000,
+    },
+  })
+
+  registerRoomHandlers(io, service)
+
+  const owner = service.createPlayer('Ana')
+  owner.connected = true
+  const room = service.createRoom(owner)
+  room.seats[0] = owner.id
+
+  const guest = service.createPlayer('Beto')
+  guest.connected = true
+  room.players.set(guest.id, guest)
+  room.seats[1] = guest.id
+
+  const bot = service.createBot(room)
+  room.players.set(bot.id, bot)
+  room.seats[2] = bot.id
+
+  const socket = createSocketDouble('socket-owner')
+  service.joinRoom(socket, room, owner, true)
+  io.connectionHandler(socket)
+
+  room.matchScore = [3, 1]
+  room.nextRoundStake = 2
+  room.matchWinnerTeam = 1
+  room.status = 'playing'
+  room.game = { startingSeat: 1, hands: {}, currentTrick: [], scores: [0, 0], wonTricks: [[], []] }
+
+  socket.handlers.get('game:restart-match')()
+
+  assert.equal(room.status, 'lobby')
+  assert.equal(room.game, null)
+  assert.deepEqual(room.seats, [null, null, null, null])
+  assert.equal(room.players.has(bot.id), false)
+  assert.equal(room.players.has(owner.id), true)
+  assert.equal(room.players.has(guest.id), true)
+  assert.deepEqual(room.matchScore, [0, 0])
+  assert.equal(room.nextRoundStake, 1)
+  assert.equal(room.matchWinnerTeam, null)
+  assert.ok(io.emissions.some((entry) => entry.event === 'game:event' && entry.payload.message === 'A partida foi reiniciada e o placar da Sueka voltou a zero.'))
+})

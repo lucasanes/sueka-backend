@@ -260,6 +260,7 @@ function registerRoomHandlers(io, roomService) {
       roomService.clearBotTurnTimer(room)
       roomService.clearTrickResolutionTimer(room)
       roomService.resetMatchState(room)
+      roomService.clearLobbySeats(room)
       room.updatedAt = Date.now()
       roomService.emitEvent(room, 'A partida foi reiniciada e o placar da Sueka voltou a zero.')
       roomService.broadcastRoom(room)

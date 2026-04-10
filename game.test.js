@@ -346,6 +346,17 @@ test('bot spends a strong follow-suit card when the trick already has many point
   assert.equal(chosen.id, 'A-hearts')
 })
 
+test('bot does not spend an unsupported seven before the ace of that suit has appeared', () => {
+  const chosen = pickBotCard(
+    [card('7', 'hearts'), card('K', 'hearts')],
+    [{ seatIndex: 0, playerId: 'p1', card: card('Q', 'hearts') }],
+    'spades',
+    2,
+  )
+
+  assert.equal(chosen.id, 'K-hearts')
+})
+
 test('bot does not throw seven under an enemy ace when a lower card is available', () => {
   const chosen = pickBotCard(
     [card('7', 'spades'), card('3', 'spades')],
