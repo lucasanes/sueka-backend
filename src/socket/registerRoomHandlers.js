@@ -178,10 +178,6 @@ function registerRoomHandlers(io, roomService) {
         roomService.emitError(socket, 'OWNER_ONLY', 'Só o dono da sala pode reiniciar.')
         return
       }
-      if (room.status !== 'finished') {
-        roomService.emitError(socket, 'GAME_NOT_FINISHED', 'A partida atual ainda não terminou.')
-        return
-      }
 
       room.game = null
       room.status = 'lobby'
