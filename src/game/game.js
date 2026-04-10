@@ -442,9 +442,14 @@ function pickBotCard(hand, currentTrick, trumpSuit, seatIndex = -1, completedTri
   const lastToAct = currentTrick.length === 3
   const followSuitCards = playableCards.filter((card) => card.suit === leadSuit)
   const trumpCards = playableCards.filter((card) => card.suit === trumpSuit)
+  const nonTrumpCards = playableCards.filter((card) => card.suit !== trumpSuit)
   const partnerLooksSafe = partnerWinning
     ? isPartnerWinnerSafe(currentWinningPlay, leadSuit, trumpSuit, lastToAct)
     : false
+
+  if (!partnerWinning && followSuitCards.length === 0 && nonTrumpCards.length > 0 && pointsOnTable === 0) {
+    return pickSafestLoser(nonTrumpCards)
+  }
 
   if (!partnerWinning) {
     const winningCards = playableCards
@@ -494,7 +499,6 @@ function pickBotCard(hand, currentTrick, trumpSuit, seatIndex = -1, completedTri
     return pickSafestLoser(trumpCards)
   }
 
-  const nonTrumpCards = playableCards.filter((card) => card.suit !== trumpSuit)
   if (nonTrumpCards.length > 0) {
     if (pointsOnTable < 10) {
       return pickSafestLoser(nonTrumpCards)

@@ -333,6 +333,17 @@ test('bot avoids cutting a low-value trick with an unnecessarily high trump', ()
   assert.equal(chosen.id, '3-spades')
 })
 
+test('bot does not cut a zero-point trick when it can discard a non-trump card', () => {
+  const chosen = pickBotCard(
+    [card('2', 'spades'), card('3', 'diamonds')],
+    [{ seatIndex: 0, playerId: 'p1', card: card('2', 'clubs') }],
+    'spades',
+    1,
+  )
+
+  assert.equal(chosen.id, '3-diamonds')
+})
+
 test('bot spends a strong follow-suit card when the trick already has many points', () => {
   const chosen = pickBotCard(
     [card('A', 'hearts'), card('2', 'hearts')],

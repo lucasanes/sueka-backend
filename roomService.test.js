@@ -81,6 +81,52 @@ test('o dono original volta a ser dono quando reconecta', () => {
   assert.equal(room.originalOwnerId, owner.id)
 })
 
+test('o dono original volta a ser dono ao reconectar pelo socket da sala', () => {
+  const io = createIoDouble()
+  const service = createRoomService({
+    io,
+    rooms: new Map(),
+    socketRefs: new Map(),
+    env: {
+      BOT_TURN_DELAY_MS: 0,
+      TRICK_REVEAL_MS: 0,
+      ROOM_TTL_MS: 60_000,
+    },
+  })
+
+  registerRoomHandlers(io, service)
+
+  const owner = service.createPlayer('Ana')
+  owner.connected = true
+  const room = service.createRoom(owner)
+
+  const guest = service.createPlayer('Beto')
+  guest.connected = true
+  room.players.set(guest.id, guest)
+
+  const ownerSocket = createSocketDouble('socket-owner')
+  const guestSocket = createSocketDouble('socket-guest')
+  service.joinRoom(ownerSocket, room, owner, false)
+  service.joinRoom(guestSocket, room, guest, false)
+  io.connectionHandler(ownerSocket)
+  io.connectionHandler(guestSocket)
+
+  ownerSocket.handlers.get('disconnect')()
+
+  assert.equal(room.ownerId, guest.id)
+
+  const reconnectSocket = createSocketDouble('socket-owner-reconnected')
+  io.connectionHandler(reconnectSocket)
+  reconnectSocket.handlers.get('room:join')({
+    roomCode: room.code,
+    playerName: owner.name,
+    sessionToken: owner.sessionToken,
+  })
+
+  assert.equal(room.ownerId, owner.id)
+  assert.ok(io.emissions.some((entry) => entry.event === 'game:event' && entry.payload.message === 'Ana voltou a ser o dono da sala.'))
+})
+
 test('apenas o dono da sala pode adicionar bot', () => {
   const io = {
     on(event, handler) {

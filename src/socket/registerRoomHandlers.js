@@ -1,6 +1,5 @@
 const { createGame } = require('../game/game')
 const { RECONNECT_WINDOW_MS } = require('../config/env')
-const { socketRefs } = require('../store/roomStore')
 
 function handPoints(cards = []) {
   return cards.reduce((sum, card) => sum + (card.points ?? 0), 0)
@@ -275,7 +274,7 @@ function registerRoomHandlers(io, roomService) {
       const { room, player } = current
       roomService.clearBotTurnTimer(room)
       roomService.clearTrickResolutionTimer(room)
-      socketRefs.delete(socket.id)
+      roomService.socketRefs.delete(socket.id)
       socket.leave(room.code)
       const seatIndex = room.status === 'lobby' ? room.seats.indexOf(player.id) : -1
       if (seatIndex !== -1) {
@@ -301,14 +300,14 @@ function registerRoomHandlers(io, roomService) {
     })
 
     socket.on('disconnect', () => {
-      const ref = socketRefs.get(socket.id)
+      const ref = roomService.socketRefs.get(socket.id)
       if (!ref) {
         return
       }
 
       const room = roomService.rooms.get(ref.roomCode)
       const player = room?.players.get(ref.playerId)
-      socketRefs.delete(socket.id)
+      roomService.socketRefs.delete(socket.id)
       if (!room || !player || player.socketId !== socket.id) {
         return
       }

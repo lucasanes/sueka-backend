@@ -452,6 +452,7 @@ function createRoomService({ io, rooms, socketRefs, env }) {
 
   return {
     rooms,
+    socketRefs,
     createPlayer,
     createBot,
     createRoom,
