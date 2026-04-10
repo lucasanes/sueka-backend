@@ -65,6 +65,7 @@ function createRoomService({ io, rooms, socketRefs, env }) {
     const code = createRoomCode()
     const room = {
       code,
+      originalOwnerId: owner.id,
       ownerId: owner.id,
       players: new Map([[owner.id, owner]]),
       seats: [null, null, null, null],
@@ -146,6 +147,20 @@ function createRoomService({ io, rooms, socketRefs, env }) {
     room.ownerId = nextOwnerId
     const nextOwner = room.players.get(nextOwnerId)
     emitEvent(room, `${nextOwner.name} agora é o dono da sala.`)
+  }
+
+  function restoreOriginalOwnerIfNeeded(room) {
+    if (!room.originalOwnerId || room.ownerId === room.originalOwnerId) {
+      return
+    }
+
+    const originalOwner = room.players.get(room.originalOwnerId)
+    if (!originalOwner || originalOwner.kind === 'bot' || !originalOwner.connected) {
+      return
+    }
+
+    room.ownerId = originalOwner.id
+    emitEvent(room, `${originalOwner.name} voltou a ser o dono da sala.`)
   }
 
   function findPlayerBySession(room, sessionToken) {
@@ -368,6 +383,7 @@ function createRoomService({ io, rooms, socketRefs, env }) {
       sessionToken: player.sessionToken,
     })
     emitEvent(room, isReconnect ? `${player.name} voltou para a sala.` : `${player.name} entrou na sala.`)
+    restoreOriginalOwnerIfNeeded(room)
     broadcastRoom(room)
   }
 
@@ -386,9 +402,13 @@ function createRoomService({ io, rooms, socketRefs, env }) {
             room.seats[seatIndex] = null
           }
           const wasOwner = room.ownerId === player.id
+          const wasOriginalOwner = room.originalOwnerId === player.id
           room.players.delete(player.id)
           if (wasOwner) {
             reassignOwnerIfNeeded(room)
+          }
+          if (wasOriginalOwner) {
+            room.originalOwnerId = null
           }
         }
       }
@@ -412,6 +432,7 @@ function createRoomService({ io, rooms, socketRefs, env }) {
     countHumanPlayers,
     findPlayerBySession,
     reassignOwnerIfNeeded,
+    restoreOriginalOwnerIfNeeded,
     requireCurrent,
     joinRoom,
     emitError,

@@ -88,6 +88,10 @@ function registerRoomHandlers(io, roomService) {
 
       const { room, player } = current
       const index = Number(seatIndex)
+      if (player.id !== room.ownerId) {
+        roomService.emitError(socket, 'OWNER_ONLY', 'Só o dono da sala pode adicionar bots.')
+        return
+      }
       if (room.status !== 'lobby') {
         roomService.emitError(socket, 'GAME_LOCKED', 'Os bots só podem ser adicionados no lobby.')
         return
@@ -234,19 +238,18 @@ function registerRoomHandlers(io, roomService) {
       roomService.clearTrickResolutionTimer(room)
       socketRefs.delete(socket.id)
       socket.leave(room.code)
-      const seatIndex = room.seats.indexOf(player.id)
+      const seatIndex = room.status === 'lobby' ? room.seats.indexOf(player.id) : -1
       if (seatIndex !== -1) {
         room.seats[seatIndex] = null
       }
-      room.players.delete(player.id)
       player.socketId = null
       player.connected = false
-      player.disconnectExpiresAt = null
+      player.disconnectExpiresAt = Date.now() + RECONNECT_WINDOW_MS
       if (room.ownerId === player.id) {
         roomService.reassignOwnerIfNeeded(room)
       }
       room.updatedAt = Date.now()
-      roomService.emitEvent(room, `${player.name} saiu da sala.`)
+      roomService.emitEvent(room, `${player.name} saiu da sala. A vaga fica reservada por alguns minutos.`)
 
       if (roomService.countHumanPlayers(room) === 0) {
         roomService.clearBotTurnTimer(room)
