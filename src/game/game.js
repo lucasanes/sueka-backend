@@ -171,11 +171,6 @@ function pickOpeningCard(playableCards, trumpSuit) {
     return pickHighest(nonTrumpAces)
   }
 
-  const nonTrumpSevens = playableCards.filter((card) => card.rank === '7' && card.suit !== trumpSuit)
-  if (nonTrumpSevens.length > 0) {
-    return pickHighest(nonTrumpSevens)
-  }
-
   const anyAces = playableCards.filter((card) => card.rank === 'A')
   if (anyAces.length > 0) {
     return pickHighest(anyAces)

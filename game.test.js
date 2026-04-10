@@ -151,6 +151,12 @@ test('bot can make passagem by opening with seven when it also holds the ace of 
   assert.equal(chosen.id, '7-clubs')
 })
 
+test('bot avoids opening with an unsupported seven when a safer lead exists', () => {
+  const chosen = pickBotCard([card('7', 'clubs'), card('3', 'hearts'), card('2', 'spades')], [], 'diamonds', 0)
+
+  assert.equal(chosen.id, '2-spades')
+})
+
 test('bot wins the trick with the weakest card that still beats the current winner', () => {
   const chosen = pickBotCard(
     [card('A', 'spades'), card('Q', 'spades')],
