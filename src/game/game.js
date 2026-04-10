@@ -193,6 +193,11 @@ function pickHighestPoints(cards) {
   })[0]
 }
 
+function pickEmbarkCard(cards) {
+  const nonAces = cards.filter((card) => card.rank !== 'A')
+  return pickHighestPoints(nonAces.length > 0 ? nonAces : cards)
+}
+
 function pickSafestLoser(cards) {
   const zeroPointCards = cards.filter((card) => card.points === 0)
   if (zeroPointCards.length > 0) {
@@ -330,7 +335,7 @@ function pickPassagemCard(playableCards, trumpSuit) {
 
   const passagemCandidates = supportedSevens.filter((card) => {
     const suitCards = playableCards.filter((other) => other.suit === card.suit)
-    const minimumSuitLength = card.suit === trumpSuit ? 4 : 3
+    const minimumSuitLength = card.suit === trumpSuit ? 5 : 4
     return suitCards.length >= minimumSuitLength
   })
 
@@ -473,7 +478,7 @@ function pickBotCard(hand, currentTrick, trumpSuit, seatIndex = -1, completedTri
 
       // Preserve high trumps when our partner is already winning a trump trick.
       if (!trickIsTrumpLed && partnerLooksSafe && pointCards.length > 0) {
-        return pickHighestPoints(pointCards)
+        return pickEmbarkCard(pointCards)
       }
     }
 
@@ -490,7 +495,7 @@ function pickBotCard(hand, currentTrick, trumpSuit, seatIndex = -1, completedTri
     )
 
     if (partnerLooksSafe && nonTrumpPointCards.length > 0) {
-      return pickHighestPoints(nonTrumpPointCards)
+      return pickEmbarkCard(nonTrumpPointCards)
     }
 
     if (nonTrumpCards.length > 0) {

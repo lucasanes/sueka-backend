@@ -181,14 +181,20 @@ test('bot avoids pulling trump immediately with a lone trump ace when safer off-
   assert.equal(chosen.id, '3-clubs')
 })
 
-test('bot can still make passagem even with a very strong trump suit', () => {
+test('bot opens with the ace first when trump support is still short for a safe passagem', () => {
   const chosen = pickBotCard([card('A', 'spades'), card('7', 'spades'), card('K', 'spades'), card('2', 'spades')], [], 'spades', 0)
 
-  assert.equal(chosen.id, '7-spades')
+  assert.equal(chosen.id, 'A-spades')
 })
 
-test('bot can make passagem when it has real support in that suit', () => {
+test('bot opens with the ace first when it only has three cards in the suit', () => {
   const chosen = pickBotCard([card('7', 'clubs'), card('A', 'clubs'), card('3', 'clubs')], [], 'spades', 0)
+
+  assert.equal(chosen.id, 'A-clubs')
+})
+
+test('bot can make passagem when it has long real support in that suit', () => {
+  const chosen = pickBotCard([card('7', 'clubs'), card('A', 'clubs'), card('3', 'clubs'), card('2', 'clubs')], [], 'spades', 0)
 
   assert.equal(chosen.id, '7-clubs')
 })
@@ -266,7 +272,7 @@ test('bot adds points when partner is already winning the trick safely', () => {
     3,
   )
 
-  assert.equal(chosen.id, 'A-spades')
+  assert.equal(chosen.id, 'Q-spades')
 })
 
 test('bot preserves high trump when partner is already winning a trump trick', () => {
@@ -286,7 +292,7 @@ test('bot preserves high trump when partner is already winning a trump trick', (
 
 test('bot embarks high off-suit points when partner is safely winning and it is void in the lead suit', () => {
   const chosen = pickBotCard(
-    [card('A', 'spades'), card('3', 'diamonds'), card('2', 'clubs')],
+    [card('A', 'spades'), card('K', 'diamonds'), card('2', 'clubs')],
     [
       { seatIndex: 0, playerId: 'p1', card: card('2', 'hearts') },
       { seatIndex: 1, playerId: 'p2', card: card('A', 'hearts') },
@@ -296,7 +302,7 @@ test('bot embarks high off-suit points when partner is safely winning and it is 
     3,
   )
 
-  assert.equal(chosen.id, 'A-spades')
+  assert.equal(chosen.id, 'K-diamonds')
 })
 
 test('bot adds points when partner is safely winning the trick', () => {
@@ -308,6 +314,17 @@ test('bot adds points when partner is safely winning the trick', () => {
   )
 
   assert.equal(chosen.id, '7-clubs')
+})
+
+test('bot only embarks the ace when it has no other point card available', () => {
+  const chosen = pickBotCard(
+    [card('A', 'clubs'), card('3', 'clubs')],
+    [{ seatIndex: 0, playerId: 'p1', card: card('7', 'clubs') }],
+    'hearts',
+    2,
+  )
+
+  assert.equal(chosen.id, 'A-clubs')
 })
 
 test('bot uses trump when it cannot follow suit and can win the trick', () => {
