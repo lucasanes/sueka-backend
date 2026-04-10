@@ -52,12 +52,28 @@ function getRoundWinner(scores) {
   return scores[0] > scores[1] ? 0 : 1
 }
 
+function getRoundValue(scores, winnerTeam) {
+  const winnerScore = scores[winnerTeam] ?? 0
+
+  if (winnerScore === 120) {
+    return 4
+  }
+
+  if (winnerScore > 90) {
+    return 2
+  }
+
+  return 1
+}
+
 function applyRoundResult(matchScore, roundStake, scores) {
   const roundWinner = getRoundWinner(scores)
 
   if (roundWinner === null) {
     return {
       roundWinner: null,
+      roundValue: 0,
+      awardedPoints: 0,
       updatedMatchScore: [...matchScore],
       nextRoundStake: roundStake + 1,
       matchWinner: null,
@@ -65,10 +81,14 @@ function applyRoundResult(matchScore, roundStake, scores) {
   }
 
   const updatedMatchScore = [...matchScore]
-  updatedMatchScore[roundWinner] += roundStake
+  const roundValue = getRoundValue(scores, roundWinner)
+  const awardedPoints = roundStake * roundValue
+  updatedMatchScore[roundWinner] += awardedPoints
 
   return {
     roundWinner,
+    roundValue,
+    awardedPoints,
     updatedMatchScore,
     nextRoundStake: 1,
     matchWinner: updatedMatchScore[roundWinner] >= 4 ? roundWinner : null,

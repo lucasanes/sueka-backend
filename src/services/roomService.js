@@ -241,7 +241,7 @@ function createRoomService({ io, rooms, socketRefs, env }) {
     } else {
       emitEvent(
         room,
-        `A dupla ${roundResult.roundWinner + 1} venceu a rodada e fez ${roundResult.updatedMatchScore[roundResult.roundWinner]} no placar.`,
+        `A dupla ${roundResult.roundWinner + 1} venceu a rodada, valeu ${roundResult.awardedPoints} e foi para ${roundResult.updatedMatchScore[roundResult.roundWinner]} no placar.`,
       )
     }
 

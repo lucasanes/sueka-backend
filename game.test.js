@@ -70,16 +70,64 @@ test('keeps the completed trick visible until resolution and then finishes the r
 test('tie keeps match score and increases next round value', () => {
   assert.deepEqual(applyRoundResult([1, 2], 1, [60, 60]), {
     roundWinner: null,
+    roundValue: 0,
+    awardedPoints: 0,
     updatedMatchScore: [1, 2],
     nextRoundStake: 2,
     matchWinner: null,
   })
 })
 
-test('round win adds carried value and can finish the sueka match', () => {
+test('simple round win adds one point to the match score', () => {
+  assert.deepEqual(applyRoundResult([1, 0], 1, [70, 50]), {
+    roundWinner: 0,
+    roundValue: 1,
+    awardedPoints: 1,
+    updatedMatchScore: [2, 0],
+    nextRoundStake: 1,
+    matchWinner: null,
+  })
+})
+
+test('round win with more than 90 points adds two points to the match score', () => {
+  assert.deepEqual(applyRoundResult([1, 0], 1, [92, 28]), {
+    roundWinner: 0,
+    roundValue: 2,
+    awardedPoints: 2,
+    updatedMatchScore: [3, 0],
+    nextRoundStake: 1,
+    matchWinner: null,
+  })
+})
+
+test('capote round with 120 points adds four points and can finish the sueka match', () => {
+  assert.deepEqual(applyRoundResult([0, 1], 1, [120, 0]), {
+    roundWinner: 0,
+    roundValue: 4,
+    awardedPoints: 4,
+    updatedMatchScore: [4, 1],
+    nextRoundStake: 1,
+    matchWinner: 0,
+  })
+})
+
+test('carried round stake is multiplied by the round value', () => {
   assert.deepEqual(applyRoundResult([3, 1], 2, [70, 50]), {
     roundWinner: 0,
+    roundValue: 1,
+    awardedPoints: 2,
     updatedMatchScore: [5, 1],
+    nextRoundStake: 1,
+    matchWinner: 0,
+  })
+})
+
+test('carried round with more than 90 points multiplies the awarded value', () => {
+  assert.deepEqual(applyRoundResult([0, 0], 2, [91, 29]), {
+    roundWinner: 0,
+    roundValue: 2,
+    awardedPoints: 4,
+    updatedMatchScore: [4, 0],
     nextRoundStake: 1,
     matchWinner: 0,
   })
