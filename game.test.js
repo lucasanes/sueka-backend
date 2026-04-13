@@ -245,6 +245,23 @@ test('bot avoids pulling a suit when an opponent has already shown void in it', 
   assert.equal(chosen.id, '2-clubs')
 })
 
+test('bot pulls back a suit when partner has already shown void in it', () => {
+  const completedTricks = [
+    {
+      cards: [
+        { seatIndex: 0, playerId: 'p1', card: card('K', 'hearts') },
+        { seatIndex: 1, playerId: 'p2', card: card('2', 'hearts') },
+        { seatIndex: 2, playerId: 'p3', card: card('3', 'clubs') },
+        { seatIndex: 3, playerId: 'p4', card: card('A', 'hearts') },
+      ],
+    },
+  ]
+
+  const chosen = pickBotCard([card('4', 'hearts'), card('2', 'clubs')], [], 'spades', 0, completedTricks)
+
+  assert.equal(chosen.id, '4-hearts')
+})
+
 test('bot wins the trick with the weakest card that still beats the current winner', () => {
   const chosen = pickBotCard(
     [card('A', 'spades'), card('Q', 'spades')],
@@ -367,6 +384,17 @@ test('bot spends a strong follow-suit card when the trick already has many point
     [
       { seatIndex: 0, playerId: 'p1', card: card('K', 'hearts') },
     ],
+    'spades',
+    1,
+  )
+
+  assert.equal(chosen.id, 'A-hearts')
+})
+
+test('bot does not spend the seven before the ace is out when another winning card exists', () => {
+  const chosen = pickBotCard(
+    [card('A', 'hearts'), card('7', 'hearts')],
+    [{ seatIndex: 0, playerId: 'p1', card: card('K', 'hearts') }],
     'spades',
     1,
   )

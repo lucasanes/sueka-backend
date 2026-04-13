@@ -244,6 +244,14 @@ function isProtectedSeven(card, hand, currentTrick = [], completedTricks = []) {
   return !hasSeenAceOfSuit(card.suit, currentTrick, completedTricks)
 }
 
+function isExposedSeven(card, currentTrick = [], completedTricks = [], lastToAct = false) {
+  if (card.rank !== '7' || lastToAct) {
+    return false
+  }
+
+  return !hasSeenAceOfSuit(card.suit, currentTrick, completedTricks)
+}
+
 function avoidProtectedSeven(cards, hand, currentTrick = [], completedTricks = []) {
   const safeCards = cards.filter((card) => !isProtectedSeven(card, hand, currentTrick, completedTricks))
   return safeCards.length > 0 ? safeCards : cards
@@ -294,6 +302,10 @@ function scoreOpeningSuit(suit, suitCards, seatIndex, completedTricks, trumpSuit
 
   if (partnerCuts?.has(suit)) {
     score += 4
+  }
+
+  if (voidSuitsBySeat.get(partnerSeat)?.has(suit)) {
+    score += 2
   }
 
   for (const enemySeat of enemySeats) {
@@ -393,9 +405,10 @@ function preferAggressiveWinner(winningCards, hand, leadSuit, trumpSuit, current
   const lastToAct = currentTrick.length === 3
   const sameSuitWinners = winningCards.filter((card) => card.suit === leadSuit)
   const trumpWinners = winningCards.filter((card) => card.suit === trumpSuit)
+  const safeSameSuitWinners = sameSuitWinners.filter((card) => !isExposedSeven(card, currentTrick, completedTricks, lastToAct))
 
-  if (sameSuitWinners.length > 0) {
-    const aces = sameSuitWinners.filter((card) => card.rank === 'A')
+  if (safeSameSuitWinners.length > 0) {
+    const aces = safeSameSuitWinners.filter((card) => card.rank === 'A')
     if (aces.length > 0 && leadSuit !== trumpSuit) {
       return pickHighest(aces)
     }
@@ -404,7 +417,7 @@ function preferAggressiveWinner(winningCards, hand, leadSuit, trumpSuit, current
       return pickHighest(aces)
     }
 
-    const sevens = sameSuitWinners.filter((card) => card.rank === '7')
+    const sevens = safeSameSuitWinners.filter((card) => card.rank === '7')
     if (sevens.length > 0 && (pointsOnTable >= 10 || lastToAct)) {
       const allowedSevens = avoidProtectedSeven(sevens, hand, currentTrick, completedTricks)
       if (allowedSevens.length > 0) {
