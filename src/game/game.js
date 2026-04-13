@@ -198,16 +198,16 @@ function pickEmbarkCard(cards) {
   return pickHighestPoints(nonAces.length > 0 ? nonAces : cards)
 }
 
-function pickSafestLoser(cards) {
-  const zeroPointCards = cards.filter((card) => card.points === 0)
-  if (zeroPointCards.length > 0) {
-    return pickLowest(zeroPointCards)
-  }
-
+function pickSafestLoser(cards, hand = cards) {
   return [...cards].sort((left, right) => {
     const pointDiff = left.points - right.points
     if (pointDiff !== 0) {
       return pointDiff
+    }
+
+    const suitCountDiff = countSuitCards(hand, left.suit) - countSuitCards(hand, right.suit)
+    if (suitCountDiff !== 0) {
+      return suitCountDiff
     }
 
     return compareWeakCards(left, right)
@@ -260,6 +260,7 @@ function avoidProtectedSeven(cards, hand, currentTrick = [], completedTricks = [
 function inferSuitKnowledge(completedTricks, trumpSuit) {
   const voidSuitsBySeat = new Map()
   const cutSuitsBySeat = new Map()
+  const sevenOwnerBySuit = new Map()
 
   for (const trick of flattenCompletedTricks(completedTricks)) {
     if (!Array.isArray(trick) || trick.length === 0) {
@@ -269,6 +270,10 @@ function inferSuitKnowledge(completedTricks, trumpSuit) {
     const leadSuit = trick[0].card.suit
 
     for (const play of trick) {
+      if (play.card.rank === '7') {
+        sevenOwnerBySuit.set(play.card.suit, play.seatIndex)
+      }
+
       if (play.card.suit === leadSuit) {
         continue
       }
@@ -285,18 +290,19 @@ function inferSuitKnowledge(completedTricks, trumpSuit) {
     }
   }
 
-  return { voidSuitsBySeat, cutSuitsBySeat }
+  return { voidSuitsBySeat, cutSuitsBySeat, sevenOwnerBySuit }
 }
 
 function scoreOpeningSuit(suit, suitCards, seatIndex, completedTricks, trumpSuit) {
   if (seatIndex === -1 || completedTricks.length === 0) {
-    return 0
+    return -suitCards.length
   }
 
-  const { voidSuitsBySeat, cutSuitsBySeat } = inferSuitKnowledge(completedTricks, trumpSuit)
+  const { voidSuitsBySeat, cutSuitsBySeat, sevenOwnerBySuit } = inferSuitKnowledge(completedTricks, trumpSuit)
   const partnerSeat = (seatIndex + 2) % 4
   const enemySeats = [1, 3].map((offset) => (seatIndex + offset) % 4)
   const partnerCuts = cutSuitsBySeat.get(partnerSeat)
+  const knownSevenOwner = sevenOwnerBySuit.get(suit)
 
   let score = 0
 
@@ -314,7 +320,11 @@ function scoreOpeningSuit(suit, suitCards, seatIndex, completedTricks, trumpSuit
     }
   }
 
-  score += Math.min(suitCards.length - 1, 2)
+  if (enemySeats.includes(knownSevenOwner) && !partnerCuts?.has(suit)) {
+    score -= 6
+  }
+
+  score -= suitCards.length
 
   return score
 }
@@ -334,6 +344,11 @@ function pickKnowledgeBasedOpeningCard(cards, seatIndex, completedTricks, trumpS
       return scoreDiff
     }
 
+    const suitLengthDiff = left[1].length - right[1].length
+    if (suitLengthDiff !== 0) {
+      return suitLengthDiff
+    }
+
     return pickLowest(left[1]).id.localeCompare(pickLowest(right[1]).id)
   })
 
@@ -347,8 +362,8 @@ function pickPassagemCard(playableCards, trumpSuit) {
 
   const passagemCandidates = supportedSevens.filter((card) => {
     const suitCards = playableCards.filter((other) => other.suit === card.suit)
-    const minimumSuitLength = card.suit === trumpSuit ? 5 : 4
-    return suitCards.length >= minimumSuitLength
+    const maximumSuitLength = card.suit === trumpSuit ? 2 : 3
+    return suitCards.length <= maximumSuitLength
   })
 
   return passagemCandidates.length > 0 ? pickHighest(passagemCandidates) : null
@@ -466,7 +481,7 @@ function pickBotCard(hand, currentTrick, trumpSuit, seatIndex = -1, completedTri
     : false
 
   if (!partnerWinning && followSuitCards.length === 0 && nonTrumpCards.length > 0 && pointsOnTable === 0) {
-    return pickSafestLoser(nonTrumpCards)
+    return pickSafestLoser(nonTrumpCards, hand)
   }
 
   if (!partnerWinning) {
@@ -495,7 +510,7 @@ function pickBotCard(hand, currentTrick, trumpSuit, seatIndex = -1, completedTri
       }
     }
 
-    return pickSafestLoser(followSuitCards)
+    return pickSafestLoser(followSuitCards, hand)
   }
 
   if (partnerWinning) {
@@ -512,22 +527,22 @@ function pickBotCard(hand, currentTrick, trumpSuit, seatIndex = -1, completedTri
     }
 
     if (nonTrumpCards.length > 0) {
-      return pickSafestLoser(nonTrumpCards)
+      return pickSafestLoser(nonTrumpCards, hand)
     }
-    return pickSafestLoser(trumpCards)
+    return pickSafestLoser(trumpCards, hand)
   }
 
   if (nonTrumpCards.length > 0) {
     if (pointsOnTable < 10) {
-      return pickSafestLoser(nonTrumpCards)
+      return pickSafestLoser(nonTrumpCards, hand)
     }
     if (trumpCards.length > 0) {
-      return pickSafestLoser(trumpCards)
+      return pickSafestLoser(trumpCards, hand)
     }
-    return pickSafestLoser(nonTrumpCards)
+    return pickSafestLoser(nonTrumpCards, hand)
   }
 
-  return pickSafestLoser(playableCards)
+  return pickSafestLoser(playableCards, hand)
 }
 
 function compareCards(a, b, leadSuit, trumpSuit) {

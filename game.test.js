@@ -190,19 +190,30 @@ test('bot opens with the ace first when trump support is still short for a safe 
 test('bot opens with the ace first when it only has three cards in the suit', () => {
   const chosen = pickBotCard([card('7', 'clubs'), card('A', 'clubs'), card('3', 'clubs')], [], 'spades', 0)
 
+  assert.equal(chosen.id, '7-clubs')
+})
+
+test('bot starts with the ace when it has many cards in the A-7 suit', () => {
+  const chosen = pickBotCard([card('7', 'clubs'), card('A', 'clubs'), card('3', 'clubs'), card('2', 'clubs')], [], 'spades', 0)
+
   assert.equal(chosen.id, 'A-clubs')
 })
 
-test('bot can make passagem when it has long real support in that suit', () => {
-  const chosen = pickBotCard([card('7', 'clubs'), card('A', 'clubs'), card('3', 'clubs'), card('2', 'clubs')], [], 'spades', 0)
+test('bot can open with the seven when A-7 is a short suit', () => {
+  const chosen = pickBotCard([card('7', 'clubs'), card('A', 'clubs'), card('3', 'hearts')], [], 'spades', 0)
 
   assert.equal(chosen.id, '7-clubs')
 })
 
-test('bot avoids passagem when it only has seven and ace with no extra suit support', () => {
-  const chosen = pickBotCard([card('7', 'clubs'), card('A', 'clubs'), card('3', 'hearts')], [], 'spades', 0)
+test('bot prefers discarding from the shortest suit when it is dumping safely', () => {
+  const chosen = pickBotCard(
+    [card('2', 'clubs'), card('3', 'clubs'), card('4', 'hearts')],
+    [{ seatIndex: 0, playerId: 'p1', card: card('2', 'spades') }],
+    'diamonds',
+    1,
+  )
 
-  assert.equal(chosen.id, 'A-clubs')
+  assert.equal(chosen.id, '4-hearts')
 })
 
 test('bot avoids opening with an unsupported seven when a safer lead exists', () => {
@@ -258,6 +269,48 @@ test('bot pulls back a suit when partner has already shown void in it', () => {
   ]
 
   const chosen = pickBotCard([card('4', 'hearts'), card('2', 'clubs')], [], 'spades', 0, completedTricks)
+
+  assert.equal(chosen.id, '4-hearts')
+})
+
+test('bot avoids pulling back a suit when an opponent has already shown the seven of that suit', () => {
+  const completedTricks = [
+    {
+      cards: [
+        { seatIndex: 0, playerId: 'p1', card: card('K', 'hearts') },
+        { seatIndex: 1, playerId: 'p2', card: card('7', 'hearts') },
+        { seatIndex: 2, playerId: 'p3', card: card('Q', 'hearts') },
+        { seatIndex: 3, playerId: 'p4', card: card('2', 'hearts') },
+      ],
+    },
+  ]
+
+  const chosen = pickBotCard([card('4', 'hearts'), card('2', 'clubs')], [], 'spades', 0, completedTricks)
+
+  assert.equal(chosen.id, '2-clubs')
+})
+
+test('bot can pull back a suit into an enemy seven when partner is already cutting that suit', () => {
+  const completedTricks = [
+    {
+      cards: [
+        { seatIndex: 1, playerId: 'p2', card: card('K', 'hearts') },
+        { seatIndex: 2, playerId: 'p3', card: card('2', 'spades') },
+        { seatIndex: 3, playerId: 'p4', card: card('Q', 'hearts') },
+        { seatIndex: 0, playerId: 'p1', card: card('3', 'hearts') },
+      ],
+    },
+    {
+      cards: [
+        { seatIndex: 0, playerId: 'p1', card: card('K', 'hearts') },
+        { seatIndex: 1, playerId: 'p2', card: card('7', 'hearts') },
+        { seatIndex: 2, playerId: 'p3', card: card('Q', 'hearts') },
+        { seatIndex: 3, playerId: 'p4', card: card('2', 'hearts') },
+      ],
+    },
+  ]
+
+  const chosen = pickBotCard([card('4', 'hearts'), card('2', 'diamonds')], [], 'spades', 0, completedTricks)
 
   assert.equal(chosen.id, '4-hearts')
 })
