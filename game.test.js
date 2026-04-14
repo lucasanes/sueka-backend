@@ -378,18 +378,32 @@ test('bot embarks high off-suit points when partner is safely winning and it is 
 test('bot adds points when partner is safely winning the trick', () => {
   const chosen = pickBotCard(
     [card('7', 'clubs'), card('Q', 'clubs')],
-    [{ seatIndex: 0, playerId: 'p1', card: card('A', 'clubs') }],
+    [{ seatIndex: 0, playerId: 'p1', card: card('A', 'hearts') }],
     'hearts',
     2,
   )
 
-  assert.equal(chosen.id, '7-clubs')
+  assert.equal(chosen.id, 'Q-clubs')
+})
+
+test('bot cuts to protect partner when only point discards are available and an opponent still has to act', () => {
+  const chosen = pickBotCard(
+    [card('2', 'spades'), card('K', 'diamonds')],
+    [
+      { seatIndex: 0, playerId: 'p1', card: card('A', 'clubs') },
+      { seatIndex: 1, playerId: 'p2', card: card('3', 'hearts') },
+    ],
+    'spades',
+    2,
+  )
+
+  assert.equal(chosen.id, '2-spades')
 })
 
 test('bot only embarks the ace when it has no other point card available', () => {
   const chosen = pickBotCard(
     [card('A', 'clubs'), card('3', 'clubs')],
-    [{ seatIndex: 0, playerId: 'p1', card: card('7', 'clubs') }],
+    [{ seatIndex: 0, playerId: 'p1', card: card('7', 'hearts') }],
     'hearts',
     2,
   )

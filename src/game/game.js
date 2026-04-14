@@ -451,9 +451,7 @@ function preferAggressiveWinner(winningCards, hand, leadSuit, trumpSuit, current
 function isPartnerWinnerSafe(currentWinningPlay, leadSuit, trumpSuit, lastToAct) {
   return (
     lastToAct ||
-    currentWinningPlay.card.suit === trumpSuit ||
-    currentWinningPlay.card.rank === 'A' ||
-    currentWinningPlay.card.rank === '7'
+    currentWinningPlay.card.suit === trumpSuit
   )
 }
 
@@ -524,6 +522,11 @@ function pickBotCard(hand, currentTrick, trumpSuit, seatIndex = -1, completedTri
 
     if (partnerLooksSafe && nonTrumpPointCards.length > 0) {
       return pickEmbarkCard(nonTrumpPointCards)
+    }
+
+    const onlyPointDiscardsAvailable = nonTrumpCards.length > 0 && nonTrumpCards.every((card) => card.points > 0)
+    if (!partnerLooksSafe && !lastToAct && trumpCards.length > 0 && onlyPointDiscardsAvailable) {
+      return pickSafestLoser(trumpCards, hand)
     }
 
     if (nonTrumpCards.length > 0) {
